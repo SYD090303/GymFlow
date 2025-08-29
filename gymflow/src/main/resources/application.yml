@@ -1,0 +1,87 @@
+spring:
+  application:
+    name: gymflow
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
+
+  jackson:
+    default-property-inclusion: NON_NULL
+    serialization:
+      FAIL_ON_EMPTY_BEANS: false
+      CLOSE_CLOSEABLE: true
+      FLUSH_AFTER_WRITE_VALUE: true
+      WRITE_DATE_KEYS_AS_TIMESTAMPS: false
+    deserialization:
+      FAIL_ON_UNKNOWN_PROPERTIES: false
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:gym_flow_dev}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${MYSQL_USERNAME:root}
+    password: ${MYSQL_PASSWORD:Sarthak@2003}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    generate-ddl: true
+    show-sql: ${JPA_SHOW_SQL:true}
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update} # Options: none, validate, update, create, create-drop
+    properties:
+      hibernate:
+        globally_quoted_identifiers: true
+        format_sql: true
+
+  sql:
+    init:
+      mode: ${SQL_INIT_MODE:never}
+      continue-on-error: false
+      schema-locations: classpath:/data/schema.sql
+      data-locations: classpath:/data/data.sql
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+server:
+  port: ${SERVER_PORT:9001}
+  servlet:
+    context-path: ${SERVLET_CONTEXT_PATH:/gymflow}
+  error:
+    whitelabel:
+      enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+security:
+  jwt:
+    # Base64-encoded 256-bit secret for HS256
+    secret: ${JWT_SECRET:ZHVtbXktMzItYnl0ZS1iYXNlNjQtc2VjcmV0LXNob3VsZC1iZS1sb25nLWVyYW5kb20=}
+    expiration-ms: ${JWT_EXPIRATION_MS:86400000} # 24h
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+    org.springframework.security: DEBUG
+    com.application.gymflow: DEBUG
+
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} | %clr(%-5p) | %clr([%15.15t]){magenta} | %clr(%-40.40logger{39}){cyan} | %clr(%m){yellow}%n"
+
+
+app:
+  cors:
+  allowed-origins: "${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5153}"
+  allowed-methods: "${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}"
+  allowed-headers: "${CORS_ALLOWED_HEADERS:*}"
+  allow-credentials: "${CORS_ALLOW_CREDENTIALS:true}"
