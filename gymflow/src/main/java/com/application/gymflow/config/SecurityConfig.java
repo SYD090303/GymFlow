@@ -33,7 +33,7 @@ public class SecurityConfig {
     private final PasswordEncoder passwordEncoder;
     private final CustomUserDetailsService customUserDetailsService;
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5153}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:5153,http://127.0.0.1:5173,http://172.20.10.3:5174}")
     private String corsAllowedOrigins;
 
     @Value("${app.cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS,PATCH}")

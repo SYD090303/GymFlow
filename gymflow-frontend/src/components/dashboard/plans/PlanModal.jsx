@@ -116,12 +116,15 @@ const PlanModal = ({ isOpen, onClose, onSubmit, initial }) => {
   return (
     <AnimatePresence>
       <motion.div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4" {...variants.backdrop} onClick={onClose}>
-        <motion.div className="relative bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md" {...variants.scaleIn} onClick={(e) => e.stopPropagation()}>
-          <h3 className="text-xl font-semibold mb-4">{initial ? 'Edit Plan' : 'Create Plan'}</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <motion.div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" {...variants.scaleIn} onClick={(e) => e.stopPropagation()}>
+          <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-violet-600 text-white">
+            <h3 className="text-lg font-semibold">{initial ? 'Edit Plan' : 'Create Plan'}</h3>
+            <p className="text-xs text-white/80">Configure plan type, duration, and pricing</p>
+          </div>
+          <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Plan Type</label>
-              <select name="planType" value={form.planType} onChange={handleChange} required className="w-full border rounded-md px-3 py-2 text-sm">
+              <select name="planType" value={form.planType} onChange={handleChange} required className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">Select Type</option>
                 {PLAN_TYPES.map((t) => (
                   <option key={t} value={t}>{nice(t)}</option>
@@ -130,12 +133,12 @@ const PlanModal = ({ isOpen, onClose, onSubmit, initial }) => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Price (₹)</label>
-              <input type="number" name="price" min="0" step="0.01" value={form.price} onChange={handleChange} required className="w-full border rounded-md px-3 py-2 text-sm" />
-              <p className="mt-1 text-xs text-gray-500">Price suggestions are auto-filled based on plan and duration. You can override.</p>
+              <input type="number" name="price" min="0" step="0.01" value={form.price} onChange={handleChange} required className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
+              <p className="mt-1 text-xs text-gray-500">Auto-suggested from plan & duration. You can override.</p>
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Duration</label>
-              <select name="duration" value={form.duration} onChange={handleChange} required className="w-full border rounded-md px-3 py-2 text-sm">
+              <select name="duration" value={form.duration} onChange={handleChange} required className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">Select Duration</option>
                 {DURATIONS.map((d) => (
                   <option key={d} value={d}>{nice(d)}</option>
@@ -144,13 +147,13 @@ const PlanModal = ({ isOpen, onClose, onSubmit, initial }) => {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange} required rows={3} className="w-full border rounded-md px-3 py-2 text-sm" />
+              <textarea name="description" value={form.description} onChange={handleChange} required rows={3} className="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" />
               <p className="mt-1 text-xs text-gray-500">{autoDescription ? 'Auto-generated from Plan Type & Duration. Edit to customize.' : 'You edited the description manually.'}</p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm border rounded-md">Cancel</button>
-              <button type="submit" disabled={loading} className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md disabled:opacity-50">{loading ? 'Saving...' : (initial ? 'Save Changes' : 'Create Plan')}</button>
+              <button type="button" onClick={onClose} className="px-3 py-1.5 text-sm border rounded-lg hover:bg-gray-50">Cancel</button>
+              <button type="submit" disabled={loading} className="px-3 py-1.5 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50">{loading ? 'Saving...' : (initial ? 'Save Changes' : 'Create Plan')}</button>
             </div>
           </form>
         </motion.div>

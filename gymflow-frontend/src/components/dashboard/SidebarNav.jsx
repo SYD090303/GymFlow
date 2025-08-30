@@ -19,13 +19,13 @@ const adminNavs = [
 ];
 
 const receptionistNavs = [
-  { name: 'Overview', path: '/dashboard', icon: <FiHome /> },
+  { name: 'Overview', path: '/dashboard/receptionist', icon: <FiHome /> },
   { name: 'Members', path: '/dashboard/members', icon: <FiUsers /> },
   { name: 'Check-in/Check-out', path: '/dashboard/check-in', icon: <FiLogIn /> },
 ];
 
 const memberNavs = [
-  { name: 'My Dashboard', path: '/dashboard', icon: <FiHome /> },
+  { name: 'My Dashboard', path: '/dashboard/member', icon: <FiHome /> },
 ];
 
 const NavItem = ({ item }) => (

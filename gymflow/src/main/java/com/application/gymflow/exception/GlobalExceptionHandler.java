@@ -52,7 +52,11 @@ public class GlobalExceptionHandler {
     }
 
     // --------------------- RESOURCE NOT FOUND ---------------------
-    @ExceptionHandler({ResourceNotFoundException.class, UserNotFoundException.class, MemberNotFoundException.class, ReceptionistNotFoundException.class})
+        @ExceptionHandler({ResourceNotFoundException.class,
+                        UserNotFoundException.class,
+                        MemberNotFoundException.class,
+                        ReceptionistNotFoundException.class,
+                        com.application.gymflow.exception.membership.MembershipPlanNotFoundException.class})
     public ResponseEntity<ErrorResponseDto> handleNotFound(RuntimeException ex, HttpServletRequest request) {
         ErrorResponseDto response = new ErrorResponseDto(
                 request.getRequestURI(),
@@ -97,6 +101,18 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now()
         );
         return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(response);
+    }
+
+    // --------------------- ATTENDANCE OPERATION ERRORS ---------------------
+    @ExceptionHandler(AttendanceOperationException.class)
+    public ResponseEntity<ErrorResponseDto> handleAttendanceOperation(AttendanceOperationException ex, HttpServletRequest request) {
+        ErrorResponseDto response = new ErrorResponseDto(
+                request.getRequestURI(),
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
     // --------------------- FILE STORAGE ERRORS ---------------------

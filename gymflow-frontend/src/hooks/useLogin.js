@@ -5,6 +5,7 @@ import { AUTH_ENDPOINTS } from '../apiConfig';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import { useAuth } from './useAuth';
+import { extractErrorMessage } from '../utils/errors';
 
 export const useLogin = (onClose) => {
   const [loading, setLoading] = useState(false);
@@ -48,8 +49,8 @@ export const useLogin = (onClose) => {
         toast.error('Login failed: No access token received.');
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'An unexpected error occurred.';
-      toast.error(`Login failed: ${errorMessage}`);
+      const reason = extractErrorMessage(error, 'Login failed');
+      toast.error(`Login failed: ${reason}`);
     } finally {
       setLoading(false);
     }

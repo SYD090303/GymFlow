@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import PageHeader from '../../../components/dashboard/PageHeader';
+import { FiUsers, FiUserPlus, FiUserCheck, FiAlertTriangle } from 'react-icons/fi';
 import { getMembers, updateMember, deleteMember, activateMember, deactivateMember, renewMembership } from '../../../services/memberService';
 import { logAttendance as logAttendanceApi } from '../../../services/attendanceService';
 import MemberTable from '../../../components/dashboard/members/MemberTable';
@@ -6,6 +8,10 @@ import AddMemberModal from '../../../components/dashboard/members/AddMemberModal
 import EditMemberModal from '../../../components/dashboard/members/EditMemberModal';
 import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
 import toast from 'react-hot-toast';
+import { extractErrorMessage } from '../../../utils/errors';
+import MetricCard from '../../../components/common/MetricCard';
+import EmptyState from '../../../components/common/EmptyState';
+import SkeletonTable from '../../../components/common/SkeletonTable';
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -30,7 +36,7 @@ const MembersPage = () => {
       if (signal?.aborted) return;
       setMembers(data);
     } catch (e) {
-      if (!signal?.aborted) toast.error('Failed to load members');
+      if (!signal?.aborted) toast.error(extractErrorMessage(e, 'Failed to load members'));
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -72,8 +78,10 @@ const MembersPage = () => {
       const updated = await updateMember(selectedMember.id, updates);
       setMembers((prev) => prev.map((m) => (m.id === selectedMember.id ? updated : m)));
       toast.success('Member updated');
-    } catch {
-      toast.error('Failed to update member');
+    } catch (e) {
+  toast.error(extractErrorMessage(e, 'Failed to update member'));
+  // Rethrow so the modal can keep itself open and highlight fields
+  throw e;
     }
   };
 
@@ -84,12 +92,12 @@ const MembersPage = () => {
       title: `${activate ? 'Activate' : 'Deactivate'} Member`,
       description: `Are you sure you want to ${activate ? 'activate' : 'deactivate'} ${member.firstName}?`,
       onConfirm: async () => {
-        try {
-          const updated = activate ? await activateMember(member.id) : await deactivateMember(member.id);
-          setMembers((prev) => prev.map((m) => (m.id === member.id ? updated : m)));
-          toast.success(`Member ${activate ? 'activated' : 'deactivated'}`);
-        } catch {
-          toast.error('Failed to change status');
+            try {
+              const updated = activate ? await activateMember(member.id) : await deactivateMember(member.id);
+              setMembers((prev) => prev.map((m) => (m.id === member.id ? updated : m)));
+              toast.success(`Member ${activate ? 'activated' : 'deactivated'}`);
+            } catch (e) {
+              toast.error(extractErrorMessage(e, 'Failed to change status'));
         } finally {
           setIsConfirmOpen(false);
         }
@@ -101,15 +109,15 @@ const MembersPage = () => {
   const handleDelete = (member) => {
     setSelectedMember(member);
     setConfirmConfig({
-      title: 'Delete Member',
-      description: `Are you sure you want to delete ${member.firstName}?`,
+      title: 'Archive Member',
+      description: `Archive ${member.firstName}? This is a soft delete and can be reactivated later.`,
       onConfirm: async () => {
         try {
           await deleteMember(member.id);
           setMembers((prev) => prev.filter((m) => m.id !== member.id));
-          toast.success('Member deleted');
-        } catch {
-          toast.error('Failed to delete member');
+          toast.success('Member archived');
+        } catch (e) {
+          toast.error(extractErrorMessage(e, 'Failed to archive member'));
         } finally {
           setIsConfirmOpen(false);
         }
@@ -118,15 +126,24 @@ const MembersPage = () => {
     setIsConfirmOpen(true);
   };
 
-  if (loading) return <div>Loading members...</div>;
+  const activeCount = useMemo(() => members.filter(m => m.status === 'ACTIVE').length, [members]);
+  const expiredCount = useMemo(() => members.filter(m => m.membershipStatus === 'EXPIRED').length, [members]);
 
   return (
-    <div>
+    <div className="p-6">
+      <PageHeader icon={<FiUsers />} title="Members" subtitle="Manage your members and their memberships.">
+        <button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm hover:from-indigo-700 hover:to-violet-700">
+          <FiUserPlus /> Add Member
+        </button>
+      </PageHeader>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <MetricCard label="Active Members" value={activeCount} icon={<FiUserCheck />} tone="emerald" />
+        <MetricCard label="Expired Memberships" value={expiredCount} icon={<FiAlertTriangle />} tone="amber" />
+        <MetricCard label="Total Members" value={members.length} icon={<FiUsers />} tone="sky" />
+      </div>
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Members</h1>
-      <button onClick={() => setIsAddOpen(true)} className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">Add Member</button>
-        </div>
         {/* Filters & search */}
     <div className="bg-white shadow-md rounded-xl border border-gray-100 p-3 md:p-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -186,13 +203,26 @@ const MembersPage = () => {
           </div>
         </div>
       </div>
-      <MemberTable
-        members={filteredMembers}
-        attendanceRefreshKey={attendanceRefreshKey}
-        onEdit={handleEdit}
-        onToggleStatus={handleToggleStatus}
-        onDelete={handleDelete}
-        onRenew={(member) => {
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] table-fixed">
+              <SkeletonTable rows={7} cols={7} />
+            </table>
+          </div>
+        </div>
+      ) : filteredMembers.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+          <EmptyState title="No members found" description="Try changing filters or add a new member." action={<button onClick={() => setIsAddOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700"><FiUserPlus /> Add Member</button>} />
+        </div>
+      ) : (
+        <MemberTable
+          members={filteredMembers}
+          attendanceRefreshKey={attendanceRefreshKey}
+          onEdit={handleEdit}
+          onToggleStatus={handleToggleStatus}
+          onDelete={handleDelete}
+          onRenew={(member) => {
           setSelectedMember(member);
           setConfirmConfig({
             title: 'Renew Membership',
@@ -203,8 +233,8 @@ const MembersPage = () => {
                 const updated = await renewMembership(member.id, today);
                 setMembers((prev) => prev.map((m) => (m.id === member.id ? updated : m)));
                 toast.success('Membership renewed');
-              } catch {
-                toast.error('Failed to renew membership');
+              } catch (e) {
+                toast.error(extractErrorMessage(e, 'Failed to renew membership'));
               } finally {
                 setIsConfirmOpen(false);
               }
@@ -212,7 +242,7 @@ const MembersPage = () => {
           });
           setIsConfirmOpen(true);
         }}
-        onLogAttendance={async (member) => {
+          onLogAttendance={async (member) => {
           setSelectedMember(member);
           const now = new Date();
           const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -226,8 +256,8 @@ const MembersPage = () => {
                 const doneTime = done.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 toast.success(`Attendance marked for ${member.firstName} at ${doneTime}`);
                 setAttendanceRefreshKey((k) => k + 1);
-              } catch {
-                toast.error('Failed to log attendance');
+              } catch (e) {
+                toast.error(extractErrorMessage(e, 'Failed to log attendance'));
               } finally {
                 setIsConfirmOpen(false);
               }
@@ -235,13 +265,14 @@ const MembersPage = () => {
           });
           setIsConfirmOpen(true);
         }}
-      />
+        />
+      )}
 
       <AddMemberModal isOpen={isAddOpen} onClose={() => setIsAddOpen(false)} onMemberAdded={load} />
 
       <EditMemberModal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} member={selectedMember} onSave={handleSaveEdit} />
 
-      <ConfirmationModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={confirmConfig.onConfirm} title={confirmConfig.title} description={confirmConfig.description} confirmText="Confirm" />
+  <ConfirmationModal isOpen={isConfirmOpen} onClose={() => setIsConfirmOpen(false)} onConfirm={confirmConfig.onConfirm} title={confirmConfig.title} description={confirmConfig.description} confirmText="Confirm" />
     </div>
   );
 };

@@ -3,6 +3,7 @@ package com.application.gymflow.controller.receptionist;
 import com.application.gymflow.constants.MemberConstants;
 import com.application.gymflow.dto.common.ResponseDto;
 import com.application.gymflow.dto.receptionist.ReceptionistCreateRequestDto;
+import com.application.gymflow.dto.receptionist.ReceptionistUpdateRequestDto;
 import com.application.gymflow.dto.receptionist.ReceptionistResponseDto;
 import com.application.gymflow.service.ReceptionistService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -129,9 +130,9 @@ public class ReceptionistController {
             )
     })
     @PutMapping("/{id}")
-    public ResponseEntity<ReceptionistResponseDto> updateReceptionist(@PathVariable Long id,
-                                                                      @Valid @RequestBody ReceptionistCreateRequestDto request) {
-        ReceptionistResponseDto updatedReceptionist = receptionistService.updateReceptionist(id, request);
+        public ResponseEntity<ReceptionistResponseDto> updateReceptionist(@PathVariable Long id,
+                                                                                                                                          @Valid @RequestBody ReceptionistUpdateRequestDto request) {
+                ReceptionistResponseDto updatedReceptionist = receptionistService.updateReceptionist(id, request);
         return new ResponseEntity<>(updatedReceptionist, HttpStatus.OK);
     }
 

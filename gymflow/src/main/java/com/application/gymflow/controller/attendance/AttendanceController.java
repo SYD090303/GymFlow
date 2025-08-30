@@ -11,6 +11,9 @@ import com.application.gymflow.repository.member.AttendanceLogRepository;
 import com.application.gymflow.service.MemberService;
 import com.application.gymflow.service.AttendanceLogService;
 import com.application.gymflow.util.MemberMapper;
+import com.application.gymflow.enums.common.Status;
+import com.application.gymflow.exception.member.MemberInactiveException;
+import com.application.gymflow.exception.member.AttendanceOperationException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -68,6 +71,18 @@ public class AttendanceController {
                         @RequestBody(required = false) AttendanceCheckInRequestDto body
         ) {
                         Member member = memberService.getMemberById(memberId);
+                        if (member.getStatus() != Status.ACTIVE) {
+                                throw new MemberInactiveException("Member is inactive and cannot check in");
+                        }
+                        // Prevent duplicate check-in if there is already an open session
+                        List<AttendanceLog> existing = attendanceLogRepository.findByMember(member);
+                        AttendanceLog open = existing.stream()
+                                .filter(l -> l.getCheckOutTime() == null)
+                                .max(java.util.Comparator.comparing(AttendanceLog::getCheckInTime))
+                                .orElse(null);
+                        if (open != null) {
+                                throw new AttendanceOperationException("Member is already checked in since " + open.getCheckInTime());
+                        }
                         AttendanceLog log = AttendanceLog.builder()
                                         .member(member)
                                         .checkInTime(body != null && body.getCheckInTime() != null ? body.getCheckInTime() : java.time.LocalDateTime.now())
@@ -84,15 +99,22 @@ public class AttendanceController {
                         @RequestBody(required = false) AttendanceCheckOutRequestDto body
         ) {
                 Member member = memberService.getMemberById(memberId);
+                if (member.getStatus() != Status.ACTIVE) {
+                        throw new MemberInactiveException("Member is inactive and cannot check out");
+                }
                 List<AttendanceLog> logs = attendanceLogRepository.findByMember(member);
                 AttendanceLog latest = logs.stream()
                         .filter(l -> l.getCheckOutTime() == null)
                         .max(java.util.Comparator.comparing(AttendanceLog::getCheckInTime))
                         .orElse(null);
                 if (latest == null) {
-                        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+                        throw new AttendanceOperationException("No active check-in session to check out");
                 }
-                latest.setCheckOutTime(body != null && body.getCheckOutTime() != null ? body.getCheckOutTime() : java.time.LocalDateTime.now());
+                java.time.LocalDateTime outTime = body != null && body.getCheckOutTime() != null ? body.getCheckOutTime() : java.time.LocalDateTime.now();
+                if (outTime.isBefore(latest.getCheckInTime())) {
+                        throw new AttendanceOperationException("Check-out time cannot be before check-in time");
+                }
+                latest.setCheckOutTime(outTime);
                 latest = attendanceLogRepository.save(latest);
                 return ResponseEntity.ok(memberMapper.toAttendanceLogResponseDto(latest));
         }
@@ -101,6 +123,9 @@ public class AttendanceController {
     @GetMapping("/member/{memberId}")
     public ResponseEntity<List<AttendanceLogResponseDto>> getAttendanceByMember(@PathVariable Long memberId) {
         Member member = memberService.getMemberById(memberId);
+        if (member.getStatus() != Status.ACTIVE) {
+                throw new MemberInactiveException("Member is inactive");
+        }
         List<AttendanceLog> logs = attendanceLogRepository.findByMember(member);
         List<AttendanceLogResponseDto> response = logs.stream()
                 .map(memberMapper::toAttendanceLogResponseDto)

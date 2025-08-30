@@ -3,6 +3,7 @@ package com.application.gymflow.service;
 
 
 import com.application.gymflow.dto.receptionist.ReceptionistCreateRequestDto;
+import com.application.gymflow.dto.receptionist.ReceptionistUpdateRequestDto;
 import com.application.gymflow.dto.receptionist.ReceptionistResponseDto;
 
 import java.util.List;
@@ -25,7 +26,7 @@ public interface ReceptionistService {
      * @param request updated details
      * @return updated ReceptionistResponseDto
      */
-    ReceptionistResponseDto updateReceptionist(Long id, ReceptionistCreateRequestDto request);
+    ReceptionistResponseDto updateReceptionist(Long id, ReceptionistUpdateRequestDto request);
 
     /**
      * Get a Receptionist by ID.

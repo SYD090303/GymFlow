@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { variants } from '../../../ui/motionPresets';
+import PageHeader from '../../../components/dashboard/PageHeader';
+import { FiSettings } from 'react-icons/fi';
 
 const Section = ({ title, children }) => (
   <motion.div {...variants.cardIn} className="bg-white rounded-xl shadow-md border border-gray-100 p-6">
@@ -13,8 +15,8 @@ const SettingsPage = () => {
   const [prefs, setPrefs] = useState({ theme: 'light', refresh: 60 });
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+    <div className="p-6 space-y-6">
+      <PageHeader icon={<FiSettings />} title="Settings" subtitle="Manage your account and gym preferences." />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Section title="Account">
           <div className="space-y-3 text-sm">

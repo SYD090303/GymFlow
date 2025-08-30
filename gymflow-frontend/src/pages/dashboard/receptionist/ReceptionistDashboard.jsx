@@ -7,8 +7,12 @@ import { getMembers, getMembersEndingBefore } from '../../../services/memberServ
 import { getReceptionists } from '../../../services/receptionistService';
 import StatCard from '../../../components/dashboard/StatCard';
 import toast from 'react-hot-toast';
+import { extractErrorMessage } from '../../../utils/errors';
 import { FiRefreshCw, FiLogOut, FiUsers as FiUsersOutline, FiActivity, FiLogIn, FiShield } from 'react-icons/fi';
 import { FaUsers, FaUserCheck, FaUserTie, FaUserClock } from 'react-icons/fa';
+import AvatarInitial from '../../../components/common/AvatarInitial';
+import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
+import { formatTime } from '../../../utils/date';
 
 const Card = ({ title, children }) => (
   <div className="bg-white rounded-xl shadow-md border border-gray-100"> 
@@ -26,36 +30,39 @@ const ReceptionistDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
   const [stats, setStats] = useState({ totalMembers: 0, activeMembers: 0, receptionists: 0, expiredMemberships: 0 });
+  const [confirm, setConfirm] = useState({ open: false, title: '', description: '', onConfirm: null });
 
   const loadData = async (signal) => {
+    setLoading(true);
+    const results = await Promise.allSettled([
+      listToday(),
+      getMembers(),
+      getReceptionists(),
+    ]);
+    if (signal?.aborted) return;
+
+    const logs = results[0].status === 'fulfilled' ? results[0].value : [];
+    const allMembers = results[1].status === 'fulfilled' ? results[1].value : [];
+    const recs = results[2].status === 'fulfilled' ? results[2].value : [];
+
+    setTodayLogs(Array.isArray(logs) ? logs : []);
+    setMembers(Array.isArray(allMembers) ? allMembers : []);
+
+    // Overview-like stats (tolerate missing data)
+    const totalMembers = (allMembers || []).length;
+    const activeMembers = (allMembers || []).filter(m => m.membershipStatus === 'ACTIVE').length;
+    const expiredMemberships = (allMembers || []).filter(m => m.membershipStatus === 'EXPIRED').length;
+    const receptionists = Array.isArray(recs) ? recs.length : 0;
+    setStats({ totalMembers, activeMembers, receptionists, expiredMemberships });
+
+    // Ending soon (next 7 days) – tolerate failure
+    const in7 = new Date();
+    in7.setDate(in7.getDate() + 7);
     try {
-      setLoading(true);
-      const [logs, allMembers, recs] = await Promise.all([
-        listToday(),
-        getMembers(),
-        getReceptionists(),
-      ]);
-      if (signal?.aborted) return;
-      setTodayLogs(Array.isArray(logs) ? logs : []);
-      setMembers(Array.isArray(allMembers) ? allMembers : []);
-      // Overview-like stats
-      const totalMembers = (allMembers || []).length;
-      const activeMembers = (allMembers || []).filter(m => m.membershipStatus === 'ACTIVE').length;
-      const expiredMemberships = (allMembers || []).filter(m => m.membershipStatus === 'EXPIRED').length;
-      const receptionists = Array.isArray(recs) ? recs.length : 0;
-      setStats({ totalMembers, activeMembers, receptionists, expiredMemberships });
-      // Ending soon (next 7 days)
-      const in7 = new Date();
-      in7.setDate(in7.getDate() + 7);
-      try {
-        const es = await getMembersEndingBefore(in7.toISOString().slice(0, 10));
-        if (signal?.aborted) return;
-        setSoonEnding(Array.isArray(es) ? es.slice(0, 5) : []);
-      } catch {
-        if (!signal?.aborted) setSoonEnding([]);
-      }
-    } catch (e) {
-      if (!signal?.aborted) toast.error("Failed to load today's overview");
+      const es = await getMembersEndingBefore(in7.toISOString().slice(0, 10));
+      if (!signal?.aborted) setSoonEnding(Array.isArray(es) ? es.slice(0, 5) : []);
+    } catch {
+      if (!signal?.aborted) setSoonEnding([]);
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -99,7 +106,7 @@ const ReceptionistDashboard = () => {
     }).length;
   }, [members]);
 
-  const fmtTime = (dt) => dt ? new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
+  const fmtTime = (dt) => formatTime(dt);
   const since = (start) => {
     if (!start) return '-';
     const ms = Date.now() - new Date(start).getTime();
@@ -109,21 +116,27 @@ const ReceptionistDashboard = () => {
     return hrs > 0 ? `${hrs}h ${rem}m` : `${rem}m`;
   };
 
-  const handleCheckOut = async (log) => {
+  const handleCheckOut = (log) => {
     const m = memberById.get(log.memberId);
-    const name = m ? `${m.firstName} ${m.lastName || ''}` : 'member';
+    const name = m ? `${m.firstName} ${m.lastName || ''}`.trim() : 'member';
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const ok = window.confirm(`Check-out ${name}?\nThis will record a check-out at ${time}.`);
-    if (!ok) return;
-    try {
-      await checkOutApi(log.memberId);
-      toast.success(`Checked out ${name}`);
-      // Refresh logs
-      const logs = await listToday();
-      setTodayLogs(Array.isArray(logs) ? logs : []);
-    } catch {
-      toast.error('Failed to check-out');
-    }
+    setConfirm({
+      open: true,
+      title: `Check-out ${name}?`,
+      description: `This will record a check-out at ${time}.`,
+      onConfirm: async () => {
+        try {
+          await checkOutApi(log.memberId);
+          toast.success(`Checked out ${name}`);
+          const logs = await listToday();
+          setTodayLogs(Array.isArray(logs) ? logs : []);
+        } catch (e) {
+          toast.error(extractErrorMessage(e, 'Failed to check-out'));
+        } finally {
+          setConfirm((c) => ({ ...c, open: false }));
+        }
+      },
+    });
   };
 
   return (
@@ -228,9 +241,7 @@ const ReceptionistDashboard = () => {
                 return (
                   <motion.li key={l.id} variants={list.item} initial="initial" animate="animate" transition={{ delay: i * 0.05 }} className="py-2 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-700 grid place-items-center font-medium">
-                        {(m.firstName?.[0] || 'U').toUpperCase()}
-                      </div>
+                      <AvatarInitial name={m.firstName} />
                       <div>
                         <div className="font-medium text-gray-800">{name}</div>
                         <div className="text-xs text-gray-500">In at {fmtTime(l.checkInTime)} • <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">{since(l.checkInTime)} live</span></div>
@@ -303,6 +314,15 @@ const ReceptionistDashboard = () => {
           )}
         </Card>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirm.open}
+        onClose={() => setConfirm((c) => ({ ...c, open: false }))}
+        onConfirm={confirm.onConfirm}
+        title={confirm.title}
+        description={confirm.description}
+        confirmText="Confirm"
+      />
     </div>
   );
 };

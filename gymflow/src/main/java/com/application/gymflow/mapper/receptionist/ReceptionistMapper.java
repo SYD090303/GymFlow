@@ -2,6 +2,7 @@ package com.application.gymflow.mapper.receptionist;
 
 import com.application.gymflow.dto.receptionist.ReceptionistCreateRequestDto;
 import com.application.gymflow.dto.receptionist.ReceptionistResponseDto;
+import com.application.gymflow.dto.receptionist.ReceptionistUpdateRequestDto;
 import com.application.gymflow.enums.common.Status;
 import com.application.gymflow.model.receptionist.Receptionist;
 import org.springframework.stereotype.Component;
@@ -53,6 +54,26 @@ public class ReceptionistMapper {
         r.setSalary(dto.getSalary());
         r.setEmergencyContactName(dto.getEmergencyContactName());
         r.setEmergencyContactPhone(dto.getEmergencyContactPhone());
+    }
+
+    public void updateReceptionistFromUpdateDto(ReceptionistUpdateRequestDto dto, Receptionist r) {
+        if (dto == null || r == null) return;
+        if (dto.getFirstName() != null) r.setFirstName(dto.getFirstName());
+        if (dto.getLastName() != null) r.setLastName(dto.getLastName());
+        if (dto.getStatus() != null) r.setStatus(dto.getStatus());
+        if (dto.getGender() != null) r.setGender(dto.getGender());
+        if (dto.getDateOfBirth() != null) r.setDateOfBirth(dto.getDateOfBirth());
+        if (dto.getAddressLine1() != null) r.setAddressLine1(dto.getAddressLine1());
+        if (dto.getAddressLine2() != null) r.setAddressLine2(dto.getAddressLine2());
+        if (dto.getCity() != null) r.setCity(dto.getCity());
+        if (dto.getState() != null) r.setState(dto.getState());
+        if (dto.getPostalCode() != null) r.setPostalCode(dto.getPostalCode());
+        if (dto.getCountry() != null) r.setCountry(dto.getCountry());
+        if (dto.getDateOfJoining() != null) r.setDateOfJoining(dto.getDateOfJoining());
+        if (dto.getShift() != null) r.setShift(dto.getShift());
+        if (dto.getSalary() != null) r.setSalary(dto.getSalary());
+        if (dto.getEmergencyContactName() != null) r.setEmergencyContactName(dto.getEmergencyContactName());
+        if (dto.getEmergencyContactPhone() != null) r.setEmergencyContactPhone(dto.getEmergencyContactPhone());
     }
 
     public ReceptionistResponseDto toReceptionistResponseDto(Receptionist r) {

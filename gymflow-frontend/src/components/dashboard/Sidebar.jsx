@@ -7,7 +7,7 @@ const Sidebar = () => {
   const { user } = useAuth();
 
   return (
-    <aside className="flex flex-col w-64 bg-white/95 backdrop-blur border-r border-gray-100">
+    <aside className="flex flex-col w-64 h-full bg-white/95 backdrop-blur border-r border-gray-100">
       <div className="h-16 flex items-center px-4 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <div className="w-9 h-9 rounded-lg bg-blue-600 text-white grid place-items-center font-bold shadow-sm">GF</div>

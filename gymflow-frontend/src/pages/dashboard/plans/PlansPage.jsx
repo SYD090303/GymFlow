@@ -1,10 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { variants } from '../../../ui/motionPresets';
+import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiPower, FiMoreVertical, FiLayers } from 'react-icons/fi';
 import { getMembershipPlans, createMembershipPlan, updateMembershipPlan, deleteMembershipPlan, activateMembershipPlan, deactivateMembershipPlan } from '../../../services/membershipPlanService';
 import toast from 'react-hot-toast';
+import { extractErrorMessage } from '../../../utils/errors';
 import PlanModal from '../../../components/dashboard/plans/PlanModal';
 import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
+import PageHeader from '../../../components/dashboard/PageHeader';
 
 const PlansPage = () => {
   const [plans, setPlans] = useState([]);
@@ -20,7 +23,7 @@ const PlansPage = () => {
       const data = await getMembershipPlans();
       if (!signal?.aborted) setPlans(Array.isArray(data) ? data : []);
     } catch (e) {
-      if (!signal?.aborted) toast.error('Failed to load plans');
+      if (!signal?.aborted) toast.error(extractErrorMessage(e, 'Failed to load plans'));
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -43,8 +46,8 @@ const PlansPage = () => {
         setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, status: 'ACTIVE' } : p));
         toast.success('Plan activated');
       }
-    } catch {
-      toast.error('Failed to update status');
+    } catch (e) {
+      toast.error(extractErrorMessage(e, 'Failed to update status'));
     }
   };
 
@@ -58,8 +61,8 @@ const PlansPage = () => {
           await deleteMembershipPlan(plan.id);
           setPlans(prev => prev.filter(p => p.id !== plan.id));
           toast.success('Plan deleted');
-        } catch {
-          toast.error('Failed to delete plan');
+        } catch (e) {
+          toast.error(extractErrorMessage(e, 'Failed to delete plan'));
         } finally {
           setConfirm({ open: false });
         }
@@ -69,62 +72,143 @@ const PlansPage = () => {
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-semibold">Membership Plans</h1>
-        <button onClick={() => { setEditing(null); setIsOpen(true); }} className="px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700">Add Plan</button>
-      </div>
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 p-3 md:p-4 mb-4">
+      <PageHeader icon={<FiLayers />} title="Membership Plans" subtitle="Create, edit, and manage plans and pricing.">
+        <button
+          onClick={() => { setEditing(null); setIsOpen(true); }}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-sm hover:from-indigo-700 hover:to-violet-700"
+        >
+          <FiPlus /> Add Plan
+        </button>
+      </PageHeader>
+
+      <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-3 md:p-4 mb-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Search</label>
-            <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search by type or description" className="w-full border rounded-md px-3 py-2 text-sm" />
+            <label className="block text-[11px] uppercase tracking-wider text-gray-500 mb-1">Search</label>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={search}
+                onChange={(e)=>setSearch(e.target.value)}
+                placeholder="Search by type or description"
+                className="w-full border rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-x-auto">
-        <table className="min-w-[760px] w-full table-fixed">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-3 text-left w-56">Plan Type</th>
-              <th className="p-3 text-left w-40 hidden md:table-cell">Duration</th>
-              <th className="p-3 text-left w-32">Price</th>
-              <th className="p-3 text-left w-28 hidden md:table-cell">Status</th>
-              <th className="p-3 text-left">Description</th>
-              <th className="p-3 text-right w-64">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {loading ? (
-              <tr><td className="p-4" colSpan={5}>Loading...</td></tr>
-            ) : filtered(plans, search).length === 0 ? (
-              <tr><td className="p-4" colSpan={5}>No plans found</td></tr>
-            ) : (
-              filtered(plans, search).map((p, i) => (
-                <motion.tr key={p.id} {...variants.tableRow} transition={{ ...variants.tableRow.transition, delay: i * 0.03 }} className="hover:bg-gray-50">
-                  <td className="p-3 truncate">{p.planType}</td>
-                  <td className="p-3 hidden md:table-cell">{p.duration}</td>
-                  <td className="p-3">₹ {p.price}</td>
-                  <td className="p-3 hidden md:table-cell">
-                    <span className={`px-2 py-0.5 rounded-full border text-xs ${p.status === 'ACTIVE' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>{p.status || 'INACTIVE'}</span>
-                  </td>
-                  <td className="p-3 truncate" title={p.description}>{p.description}</td>
-                  <td className="p-3 text-right">
-                    <div className="hidden xl:flex justify-end gap-2">
-                      <button onClick={()=>{ setEditing(p); setIsOpen(true); }} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md shadow-sm">Edit</button>
-                      <button onClick={()=>toggleStatus(p)} className="px-3 py-1 text-xs bg-yellow-500 text-white rounded-md shadow-sm">{p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
-                      <button onClick={()=>confirmDelete(p)} className="px-3 py-1 text-xs bg-red-600 text-white rounded-md shadow-sm">Delete</button>
-                    </div>
-                    <div className="xl:hidden flex justify-end gap-2">
-                      <button onClick={()=>{ setEditing(p); setIsOpen(true); }} className="px-3 py-1 text-xs bg-indigo-600 text-white rounded-md">Edit</button>
-                      <MoreActions plan={p} onToggleStatus={toggleStatus} onDelete={confirmDelete} />
-                    </div>
-                  </td>
-                </motion.tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      {/* Mobile card list */}
+      <div className="md:hidden bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden divide-y">
+        {loading ? (
+          <div className="p-4 text-sm text-gray-500">Loading plans…</div>
+        ) : filtered(plans, search).length === 0 ? (
+          <div className="p-6 text-sm text-gray-500">No plans found. Try a different search.</div>
+        ) : (
+          filtered(plans, search).map((p) => (
+            <div key={p.id} className="p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 truncate">{nice(p.planType || '-')}</div>
+                  <div className="text-sm text-gray-700 mt-0.5">₹ {p.price} {p.duration ? `• ${p.duration}` : ''}</div>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-medium ${p.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${p.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                      {p.status || 'INACTIVE'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {p.description && (
+                <div className="mt-2 text-sm text-gray-700 line-clamp-3">{p.description}</div>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => { setEditing(p); setIsOpen(true); }}
+                  className="px-3 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+                >Edit</button>
+                <button
+                  onClick={() => toggleStatus(p)}
+                  className="px-3 py-1.5 text-xs rounded-md bg-amber-500 text-white hover:bg-amber-600"
+                >{p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
+                <button
+                  onClick={() => confirmDelete(p)}
+                  className="px-3 py-1.5 text-xs rounded-md bg-rose-600 text-white hover:bg-rose-700"
+                >Delete</button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Desktop/tablet table */}
+      <div className="hidden md:block bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full w-full table-auto border-separate border-spacing-0">
+            <thead className="bg-gray-50 sticky top-0 z-10">
+              <tr className="text-gray-600">
+                <th className="px-4 py-3 text-left font-medium">Plan Type</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell font-medium">Duration</th>
+                <th className="px-4 py-3 text-left font-medium">Price</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell font-medium">Status</th>
+                <th className="px-4 py-3 text-left font-medium">Description</th>
+                <th className="px-4 py-3 text-right font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td className="p-4 text-sm text-gray-500" colSpan={6}>Loading plans…</td></tr>
+              ) : filtered(plans, search).length === 0 ? (
+                <tr><td className="p-6 text-sm text-gray-500" colSpan={6}>No plans found. Try a different search.</td></tr>
+              ) : (
+                filtered(plans, search).map((p, i) => (
+                  <motion.tr key={p.id} {...variants.tableRow} transition={{ ...variants.tableRow.transition, delay: i * 0.03 }} className="hover:bg-gray-50/60">
+                    <td className="px-4 py-3 font-medium text-gray-800 border-t border-gray-100">{nice(p.planType || '-')}</td>
+                    <td className="px-4 py-3 hidden md:table-cell text-gray-700 border-t border-gray-100">{nice(p.duration || '-')}</td>
+                    <td className="px-4 py-3 font-semibold text-gray-900 border-t border-gray-100 whitespace-nowrap">₹ {p.price}</td>
+                    <td className="px-4 py-3 hidden md:table-cell border-t border-gray-100">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-medium ${p.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${p.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                        {p.status || 'INACTIVE'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-700 border-t border-gray-100 whitespace-normal break-words">
+                      <div className="max-w-[700px]">{p.description}</div>
+                    </td>
+                    <td className="px-4 py-3 border-t border-gray-100">
+                      <div className="hidden lg:flex justify-end gap-2 flex-wrap">
+                        <button
+                          onClick={()=>{ setEditing(p); setIsOpen(true); }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+                          title="Edit"
+                        >
+                          <FiEdit2 /> Edit
+                        </button>
+                        <button
+                          onClick={()=>toggleStatus(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-amber-500 text-white hover:bg-amber-600 shadow-sm"
+                          title={p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                        >
+                          <FiPower /> {p.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={()=>confirmDelete(p)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-rose-600 text-white hover:bg-rose-700 shadow-sm"
+                          title="Delete"
+                        >
+                          <FiTrash2 /> Delete
+                        </button>
+                      </div>
+                      <div className="lg:hidden flex justify-end">
+                        <MoreActions plan={p} onToggleStatus={toggleStatus} onDelete={confirmDelete} />
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <PlanModal
@@ -142,8 +226,8 @@ const PlansPage = () => {
               setPlans((prev)=>[created, ...prev]);
               toast.success('Plan created');
             }
-          } catch {
-            toast.error('Failed to save plan');
+          } catch (e) {
+            toast.error(extractErrorMessage(e, 'Failed to save plan'));
           }
         }}
       />
@@ -172,16 +256,29 @@ const filtered = (plans, search) => {
   );
 };
 
+const nice = (s='') => String(s).replace(/_/g,' ').toLowerCase().replace(/\b\w/g,m=>m.toUpperCase());
+
 const MoreActions = ({ plan, onToggleStatus, onDelete }) => {
   const [open, setOpen] = React.useState(false);
   return (
     <div className="relative">
-      <button onClick={()=>setOpen(o=>!o)} className="px-2.5 py-1 text-xs border rounded">More</button>
+      <button
+        onClick={()=>setOpen(o=>!o)}
+        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border rounded-md hover:bg-gray-50"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <FiMoreVertical /> More
+      </button>
       <AnimatePresence>
         {open && (
-          <motion.div {...variants.scaleIn} className="absolute right-0 mt-1 w-40 bg-white border rounded shadow z-10">
-            <button onClick={()=>{ setOpen(false); onToggleStatus(plan); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">{plan.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
-            <button onClick={()=>{ setOpen(false); onDelete(plan); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-50">Delete</button>
+          <motion.div {...variants.scaleIn} className="absolute right-0 mt-1 w-44 bg-white border rounded-lg shadow-lg z-20 overflow-hidden">
+            <button onClick={()=>{ setOpen(false); onToggleStatus(plan); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 inline-flex items-center gap-2">
+              <FiPower className="text-amber-600" /> {plan.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}
+            </button>
+            <button onClick={()=>{ setOpen(false); onDelete(plan); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-gray-50 inline-flex items-center gap-2">
+              <FiTrash2 /> Delete
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

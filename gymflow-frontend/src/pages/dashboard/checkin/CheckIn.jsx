@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getMembers } from '../../../services/memberService';
-import { checkIn as checkInApi, checkOut as checkOutApi } from '../../../services/attendanceService';
+import { checkIn as checkInApi, checkOut as checkOutApi, listByMember } from '../../../services/attendanceService';
 import toast from 'react-hot-toast';
-import { FiLogIn, FiLogOut, FiX } from 'react-icons/fi';
+import { extractErrorMessage } from '../../../utils/errors';
+import { FiLogIn, FiLogOut, FiX, FiSearch, FiCheckSquare } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { variants, list } from '../../../ui/motionPresets';
+import PageHeader from '../../../components/dashboard/PageHeader';
+import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
 
 const CheckIn = () => {
   const [query, setQuery] = useState('');
@@ -14,6 +17,8 @@ const CheckIn = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selected, setSelected] = useState(null);
   const containerRef = useRef(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({ title: '', description: '', onConfirm: null, confirmText: 'Confirm' });
 
   useEffect(() => {
     let mounted = true;
@@ -23,7 +28,7 @@ const CheckIn = () => {
         const data = await getMembers();
         if (mounted) setMembers(Array.isArray(data) ? data : []);
       } catch (err) {
-        toast.error('Failed to load members');
+        toast.error(extractErrorMessage(err, 'Failed to load members'));
       } finally {
         if (mounted) setLoadingMembers(false);
       }
@@ -55,46 +60,75 @@ const CheckIn = () => {
       .slice(0, 8);
   }, [members, query]);
 
-  const doCheckIn = async (member) => {
+  const doCheckIn = (member) => {
     if (!member) return;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const ok = window.confirm(`Check-in ${member.firstName} ${member.lastName || ''}?\nThis will record a check-in at ${time}.`);
-    if (!ok) return;
-    try {
-      setActionLoadingId(member.id);
-      await checkInApi(member.id, {});
-      toast.success(`Checked in ${member.firstName} at ${time}`);
-    } catch (e) {
-      toast.error('Check-in failed');
-    } finally {
-      setActionLoadingId(null);
-    }
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setConfirmConfig({
+      title: 'Confirm Check-in',
+      description: `This will record a check-in for ${member.firstName} at ${time}. Continue?`,
+      confirmText: 'Check-in',
+      onConfirm: async () => {
+        try {
+          setActionLoadingId(member.id);
+          await checkInApi(member.id, {});
+          const done = new Date();
+          const doneTime = done.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          toast.success(`Checked in ${member.firstName} at ${doneTime}`);
+        } catch (e) {
+          toast.error(extractErrorMessage(e, 'Check-in failed'));
+        } finally {
+          setActionLoadingId(null);
+          setIsConfirmOpen(false);
+        }
+      },
+    });
+    setIsConfirmOpen(true);
   };
 
-  const doCheckOut = async (member) => {
+  const doCheckOut = (member) => {
     if (!member) return;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const ok = window.confirm(`Check-out ${member.firstName} ${member.lastName || ''}?\nThis will record a check-out at ${time}.`);
-    if (!ok) return;
-    try {
-      setActionLoadingId(member.id);
-      await checkOutApi(member.id, {});
-      toast.success(`Checked out ${member.firstName} at ${time}`);
-    } catch (e) {
-      toast.error('Check-out failed');
-    } finally {
-      setActionLoadingId(null);
-    }
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setConfirmConfig({
+      title: 'Confirm Check-out',
+      description: `This will record a check-out for ${member.firstName} at ${time}. Continue?`,
+      confirmText: 'Check-out',
+      onConfirm: async () => {
+        try {
+          setActionLoadingId(member.id);
+          // Front-end guard: ensure there is an open session
+          const logs = await listByMember(member.id);
+          const hasOpen = Array.isArray(logs) && logs.some(l => !l.checkOutTime);
+          if (!hasOpen) {
+            toast.error('No active session to check out');
+            return;
+          }
+          await checkOutApi(member.id, {});
+          const done = new Date();
+          const doneTime = done.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          toast.success(`Checked out ${member.firstName} at ${doneTime}`);
+        } catch (e) {
+          toast.error(extractErrorMessage(e, 'Check-out failed'));
+        } finally {
+          setActionLoadingId(null);
+          setIsConfirmOpen(false);
+        }
+      },
+    });
+    setIsConfirmOpen(true);
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl">
-      <h1 className="text-2xl font-semibold mb-2">Member Check-in/Check-out</h1>
-      <p className="text-sm text-gray-500 mb-4">Search by name or email. Use the inline actions to check-in or check-out.</p>
+    <div className="p-6 max-w-3xl">
+      <PageHeader icon={<FiCheckSquare />} title="Member Check-in/Check-out" subtitle="Search members and perform quick check-in/out actions." />
+      <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
 
       <div className="relative" ref={containerRef}>
         <div className="flex gap-2">
-          <input
+          <div className="relative flex-1">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
             type="text"
             placeholder={loadingMembers ? 'Loading members…' : 'Search members by name or email'}
             value={query}
@@ -103,8 +137,9 @@ const CheckIn = () => {
               setShowSuggestions(true);
             }}
             onFocus={() => setShowSuggestions(true)}
-            className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+            className="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
+          </div>
           {query && (
             <button
               type="button"
@@ -161,10 +196,10 @@ const CheckIn = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+  </div>
 
-      <AnimatePresence>
-      {selected && (
+    <AnimatePresence>
+    {selected && (
   <motion.div {...variants.cardIn} className="mt-4 p-4 border rounded-lg bg-gray-50">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -193,6 +228,16 @@ const CheckIn = () => {
         </motion.div>
       )}
       </AnimatePresence>
+      </div>
+
+      <ConfirmationModal
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        confirmText={confirmConfig.confirmText || 'Confirm'}
+      />
     </div>
   );
 };

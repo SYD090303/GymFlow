@@ -1,5 +1,4 @@
 import React from "react";
-import { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { variants } from "../../../ui/motionPresets";
 import { useLogin } from "../../../hooks/useLogin";
@@ -10,8 +9,7 @@ const LoginModal = ({ isOpen, onClose }) => {
   // Using centralized motion presets for consistent timing
 
   return (
-    <>
-      <Toaster position="top-center" reverseOrder={false} />
+  <>
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -20,7 +18,7 @@ const LoginModal = ({ isOpen, onClose }) => {
             {...variants.backdrop}
           >
             <motion.div
-              className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-2xl w-full max-w-md"
+              className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200"
               onClick={(e) => e.stopPropagation()}
               {...variants.scaleIn}
             >
@@ -46,12 +44,8 @@ const LoginModal = ({ isOpen, onClose }) => {
               </button>
 
               <div className="text-center mb-8">
-                <h2 className="text-3xl font-extrabold text-gray-900">
-                  Gym Flow Login
-                </h2>
-                <p className="text-gray-500 mt-2">
-                  Access your dashboard
-                </p>
+                <h2 className="text-3xl font-extrabold text-gray-900">Gym Flow Login</h2>
+                <p className="text-gray-500 mt-2">Access your dashboard</p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-6">
@@ -68,7 +62,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     name="email"
                     required
                     placeholder="you@example.com"
-                    className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
                 <div>
@@ -84,7 +78,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     name="password"
                     required
                     placeholder="••••••••"
-                    className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
                   />
                 </div>
 
@@ -126,7 +120,7 @@ const LoginModal = ({ isOpen, onClose }) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </>
+  </>
   );
 };
 

@@ -2,6 +2,7 @@ package com.application.gymflow.service.impl;
 
 import com.application.gymflow.dto.auth.RegisterRequest;
 import com.application.gymflow.dto.receptionist.ReceptionistCreateRequestDto;
+import com.application.gymflow.dto.receptionist.ReceptionistUpdateRequestDto;
 import com.application.gymflow.dto.receptionist.ReceptionistResponseDto;
 import com.application.gymflow.enums.common.Status;
 import com.application.gymflow.exception.receptionist.ReceptionistNotFoundException;
@@ -70,12 +71,12 @@ public class ReceptionistServiceImpl implements ReceptionistService {
      */
     @Override
     @Transactional
-    public ReceptionistResponseDto updateReceptionist(Long id, ReceptionistCreateRequestDto request) {
+        public ReceptionistResponseDto updateReceptionist(Long id, ReceptionistUpdateRequestDto request) {
         Receptionist receptionist = receptionistRepository.findById(id)
                 .orElseThrow(() -> new ReceptionistNotFoundException("Receptionist not found with ID: " + id));
 
         // Update basic receptionist details
-        receptionistMapper.updateReceptionistFromDto(request, receptionist);
+                receptionistMapper.updateReceptionistFromUpdateDto(request, receptionist);
 
         // Save the updated receptionist
         Receptionist updatedReceptionist = receptionistRepository.save(receptionist);
@@ -85,8 +86,8 @@ public class ReceptionistServiceImpl implements ReceptionistService {
         User user = userRepository.findByEmail(receptionist.getEmail())
                 .orElseThrow(() -> new UserNotFoundException("Corresponding user not found for receptionist ID: " + id));
 
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
+        if (request.getFirstName() != null) user.setFirstName(request.getFirstName());
+        if (request.getLastName() != null) user.setLastName(request.getLastName());
         // Do not update the password here, as it requires a separate endpoint
         // Do not update email without a dedicated process, as it's a primary key.
         userRepository.save(user);

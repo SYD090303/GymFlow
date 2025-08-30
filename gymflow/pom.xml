@@ -124,6 +124,18 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- H2 in-memory database for tests -->
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Spring Security test utilities (with @WithMockUser, etc.) -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -134,6 +146,22 @@
 
 	<build>
 		<plugins>
+			<!-- Ensure both *Test and *IT run in the 'test' phase -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.2.5</version>
+				<configuration>
+					<includes>
+						<include>**/Test*.java</include>
+						<include>**/*Test.java</include>
+						<include>**/*Tests.java</include>
+						<include>**/*TestCase.java</include>
+						<include>**/*IT.java</include>
+					</includes>
+					<useModulePath>false</useModulePath>
+				</configuration>
+			</plugin>
 			<!-- Compiler Plugin (Java 21 + Lombok annotation processing) -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

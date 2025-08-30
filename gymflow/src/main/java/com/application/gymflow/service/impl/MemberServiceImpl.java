@@ -14,11 +14,13 @@ import com.application.gymflow.model.auth.Role;
 import com.application.gymflow.model.member.*;
 import com.application.gymflow.model.membership.MembershipPlan;
 import com.application.gymflow.repository.member.*;
+import com.application.gymflow.repository.auth.UserRepository;
 import com.application.gymflow.repository.membership.MembershipPlanRepository;
 import com.application.gymflow.service.MemberService;
 import com.application.gymflow.service.auth.AuthService;
 
 import com.application.gymflow.service.AttendanceLogService;
+import com.application.gymflow.exception.member.MemberInactiveException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,6 +51,7 @@ public class MemberServiceImpl implements MemberService {
     private final PaymentRepository paymentRepository;
     private final AttendanceLogService attendanceLogService;
     private final AuthService authService;
+    private final UserRepository userRepository;
 
     /**
      * Creates a new member and all associated records (user, membership, fitness profile, payment).
@@ -156,7 +159,10 @@ public class MemberServiceImpl implements MemberService {
      */
     @Override
     public List<Member> getAllMembers() {
-        return memberRepository.findAll();
+    // By default, only show ACTIVE members (soft-deleted are INACTIVE)
+    return memberRepository.findAll().stream()
+        .filter(m -> m.getStatus() == Status.ACTIVE)
+        .toList();
     }
 
     /**
@@ -236,10 +242,26 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public void deleteMember(Long id) {
-        if (!memberRepository.existsById(id)) {
-            throw new MemberNotFoundException("Member not found with ID: " + id);
+        Member member = memberRepository.findById(id)
+                .orElseThrow(() -> new MemberNotFoundException("Member not found with ID: " + id));
+
+        // Soft delete: mark member as INACTIVE
+        member.setStatus(Status.INACTIVE);
+
+        // If membership exists, cancel it
+        Membership membership = member.getMembership();
+        if (membership != null) {
+            membership.setMembershipStatus(MembershipStatus.CANCELLED);
+            membershipRepository.save(membership);
         }
-        memberRepository.deleteById(id);
+
+        // Also mark corresponding User as INACTIVE if present
+        userRepository.findByEmail(member.getEmail()).ifPresent(user -> {
+            user.setStatus(Status.INACTIVE);
+            userRepository.save(user);
+        });
+
+        memberRepository.save(member);
     }
 
     /**
@@ -271,6 +293,11 @@ public class MemberServiceImpl implements MemberService {
     @Transactional
     public AttendanceLog logAttendance(Long memberId, RecordedByType recordedBy) {
         Member member = getMemberById(memberId);
+
+        // Block attendance logging for inactive/soft-deleted members
+        if (member.getStatus() != Status.ACTIVE) {
+            throw new MemberInactiveException("Member is inactive and cannot log attendance");
+        }
 
         AttendanceLog attendanceLog = AttendanceLog.builder()
                 .member(member)

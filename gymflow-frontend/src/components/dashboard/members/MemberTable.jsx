@@ -4,9 +4,14 @@ import { variants } from '../../../ui/motionPresets';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { listByMember, checkOut as attendanceCheckOut } from '../../../services/attendanceService';
 import toast from 'react-hot-toast';
-import { FiRefreshCw } from 'react-icons/fi';
+import { extractErrorMessage } from '../../../utils/errors';
+import { FiRefreshCw, FiEdit2, FiPower, FiTrash2, FiMoreVertical, FiLogIn } from 'react-icons/fi';
 import { useCallback } from 'react';
 import ConfirmationModal from './ConfirmationModal';
+import StatusChip from '../../common/StatusChip';
+import { formatDate, formatDateTime } from '../../../utils/date';
+import AvatarInitial from '../../common/AvatarInitial';
+import { titleCase } from '../../../utils/text';
 
 const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLogAttendance, attendanceRefreshKey }) => {
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -23,17 +28,27 @@ const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLog
       <div className="relative">
         <button
           onClick={() => setOpen((v) => !v)}
-          className="px-2.5 py-1 text-xs border rounded hover:bg-gray-50"
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs border rounded-md hover:bg-gray-50"
+          aria-haspopup="menu"
+          aria-expanded={open}
         >
-          More
+          <FiMoreVertical /> More
         </button>
         <AnimatePresence>
           {open && (
-            <motion.div {...variants.scaleIn} className="absolute right-0 mt-1 w-40 bg-white border rounded shadow z-10">
-              <button onClick={() => { setOpen(false); onToggleStatus(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">{`Activate/Deactivate`}</button>
-              <button onClick={() => { setOpen(false); onRenew(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">Renew</button>
-              <button onClick={() => { setOpen(false); onAttendance(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50">Attendance</button>
-              <button onClick={() => { setOpen(false); onDelete(); }} className="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-gray-50">Delete</button>
+            <motion.div {...variants.scaleIn} className="absolute right-0 mt-1 w-44 bg-white border rounded-lg shadow-lg z-20 overflow-hidden">
+              <button onClick={() => { setOpen(false); onToggleStatus(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 inline-flex items-center gap-2">
+                <FiPower className="text-amber-600" /> Activate · Deactivate
+              </button>
+              <button onClick={() => { setOpen(false); onRenew(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 inline-flex items-center gap-2">
+                <FiRefreshCw /> Renew
+              </button>
+              <button onClick={() => { setOpen(false); onAttendance(); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 inline-flex items-center gap-2">
+                <FiLogIn /> Attendance
+              </button>
+              <button onClick={() => { setOpen(false); onDelete(); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-gray-50 inline-flex items-center gap-2">
+                <FiTrash2 /> Archive
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -41,25 +56,58 @@ const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLog
     );
   };
   return (
-    <div className="bg-white shadow-md rounded-lg">
-      <div className="overflow-x-auto">
-  <table className="w-full min-w-[720px] table-fixed">
-        <thead className="bg-gray-50">
+    <div className="bg-white rounded-2xl shadow-md border border-gray-100">
+  {/* Mobile: card list */}
+  <div className="md:hidden divide-y">
+    {members.map((m) => (
+      <div key={m.id} className="p-4">
+        <div className="flex items-center gap-3">
+          <AvatarInitial name={`${m.firstName || ''} ${m.lastName || ''}`.trim() || 'M'} />
+          <div className="min-w-0">
+            <div className="font-medium text-gray-900 truncate">{titleCase(`${m.firstName ?? ''} ${m.lastName ?? ''}`.trim())}</div>
+            <div className="text-xs text-gray-500 truncate">{m.email}</div>
+          </div>
+          <div className="ml-auto"><StatusChip status={m.membershipStatus} /></div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div><span className="text-gray-500">Phone:</span> {m.phone || '-'}</div>
+          <div><span className="text-gray-500">Shift:</span> {m.shift || '-'}</div>
+          <div><span className="text-gray-500">Start:</span> {formatDate(m.startDate)}</div>
+          <div><span className="text-gray-500">End:</span> {formatDate(m.endDate)}</div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button onClick={() => onEdit(m)} className="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded-md">Edit</button>
+          <button onClick={() => onToggleStatus(m)} className="px-3 py-1.5 text-xs bg-amber-500 text-white rounded-md">{m.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
+          <button onClick={() => onRenew(m)} className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-md">Renew</button>
+          <button onClick={() => onLogAttendance(m)} className="px-3 py-1.5 text-xs bg-slate-700 text-white rounded-md">Attend</button>
+          <button onClick={() => onDelete(m)} className="px-3 py-1.5 text-xs bg-rose-600 text-white rounded-md">Archive</button>
+        </div>
+        <div className="mt-3">
+          <AttendancePanel memberId={m.id} memberName={m.firstName} refreshKey={attendanceRefreshKey} />
+        </div>
+      </div>
+    ))}
+  </div>
+
+  {/* Desktop/tablet: table */}
+  <div className="hidden md:block overflow-x-auto w-full max-w-7xl mx-auto px-2 md:px-4">
+  <table className="w-full table-auto">
+        <thead className="bg-gray-50 sticky top-0 z-10">
           <tr className="text-left">
-            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[180px]">Name</th>
-            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[220px]">Email</th>
-            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">Phone</th>
-    <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[110px] hidden lg:table-cell">Start</th>
-    <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[110px] hidden xl:table-cell">End</th>
-  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[120px]">Membership</th>
-    <th className="px-4 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-[200px]">Actions</th>
+            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+    <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Start</th>
+    <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden xl:table-cell">End</th>
+  <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Membership</th>
+    <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-[520px]">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-200">
           {members.map((member) => (
             <React.Fragment key={member.id}>
-              <tr>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap flex items-center gap-2">
+              <tr className="align-middle">
+                <td className="px-4 md:px-6 py-4 flex items-center gap-2 align-middle">
                   <button
                     aria-label="Toggle details"
                     onClick={() => toggleExpand(member.id)}
@@ -68,40 +116,27 @@ const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLog
                   >
                     {expandedIds.has(member.id) ? <FaChevronDown className="text-gray-600" /> : <FaChevronRight className="text-gray-600" />}
                   </button>
-                  <span className="truncate max-w-[140px]" title={`${member.firstName} ${member.lastName}`}>{member.firstName} {member.lastName}</span>
+                  <AvatarInitial name={`${member.firstName || ''} ${member.lastName || ''}`.trim() || 'M'} />
+                  <span className="truncate max-w-[220px]" title={`${member.firstName ?? ''} ${member.lastName ?? ''}`}>
+                    {titleCase(`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim())}
+                  </span>
                 </td>
-                <td className="px-4 md:px-6 py-4 truncate" title={member.email}>{member.email}</td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap">{member.phone}</td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap hidden lg:table-cell">{member.startDate || '-'}</td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap hidden xl:table-cell">{member.endDate || '-'}</td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                  {(() => {
-                    const ms = member.membershipStatus;
-                    const cls = ms === 'ACTIVE'
-                      ? 'bg-green-100 text-green-800'
-                      : ms === 'EXPIRED'
-                      ? 'bg-red-100 text-red-800'
-                      : ms === 'PENDING'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-gray-100 text-gray-800';
-                    return (
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${cls}`}>
-                        {ms || '-'}
-                      </span>
-                    );
-                  })()}
-                </td>
-                <td className="px-4 md:px-6 py-4 whitespace-nowrap text-right relative">
+                <td className="px-4 md:px-6 py-4 truncate max-w-[260px] align-middle" title={member.email}>{member.email}</td>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap align-middle">{member.phone}</td>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap hidden lg:table-cell align-middle">{formatDate(member.startDate)}</td>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap hidden xl:table-cell align-middle">{formatDate(member.endDate)}</td>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap align-middle"><StatusChip status={member.membershipStatus} /></td>
+                <td className="px-4 md:px-6 py-4 whitespace-nowrap align-middle pr-8">
                   {/* Full action set on xl+ */}
-                  <div className="hidden xl:flex flex-wrap justify-end gap-1.5 max-w-full">
-                    <button onClick={() => onEdit(member)} className="px-2.5 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Edit</button>
-                    <button onClick={() => onToggleStatus(member)} className="px-2.5 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600">{member.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
-                    <button onClick={() => onRenew(member)} className="px-2.5 py-1 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700">Renew</button>
-                    <button onClick={() => onLogAttendance(member)} className="px-2.5 py-1 text-xs bg-slate-600 text-white rounded hover:bg-slate-700">Attend</button>
-                    <button onClick={() => onDelete(member)} className="px-2.5 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+                  <div className="hidden xl:flex flex-nowrap justify-start gap-1.5">
+                    <button onClick={() => onEdit(member)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700 shadow-sm"><FiEdit2 /> Edit</button>
+                    <button onClick={() => onToggleStatus(member)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs bg-amber-500 text-white rounded-md hover:bg-amber-600 shadow-sm"><FiPower /> {member.status === 'ACTIVE' ? 'Deactivate' : 'Activate'}</button>
+                    <button onClick={() => onRenew(member)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs bg-emerald-600 text-white rounded-md hover:bg-emerald-700 shadow-sm"><FiRefreshCw /> Renew</button>
+                    <button onClick={() => onLogAttendance(member)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs bg-slate-700 text-white rounded-md hover:bg-slate-800 shadow-sm"><FiLogIn /> Attend</button>
+                    <button onClick={() => onDelete(member)} className="inline-flex items-center gap-1 px-2 py-1.5 text-xs bg-rose-600 text-white rounded-md hover:bg-rose-700 shadow-sm"><FiTrash2 /> Archive</button>
                   </div>
                   {/* Compact action menu on < xl */}
-                  <div className="xl:hidden flex justify-end gap-1.5">
+                  <div className="xl:hidden flex justify-start gap-1.5 flex-wrap">
                     <button onClick={() => onEdit(member)} className="px-2.5 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">Edit</button>
                     <RowActionMenu
                       onToggleStatus={() => onToggleStatus(member)}
@@ -126,8 +161,8 @@ const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLog
                               ? `${member.membershipPlan.name} • ₹${member.membershipPlan.price ?? '-'} • ${member.membershipPlan.durationMonths ?? '-'} mo`
                               : '-'}
                           </li>
-                          <li><span className="text-gray-500">Start:</span> {member.startDate || '-'}</li>
-                          <li><span className="text-gray-500">End:</span> {member.endDate || '-'}</li>
+                          <li><span className="text-gray-500">Start:</span> {formatDate(member.startDate)}</li>
+                          <li><span className="text-gray-500">End:</span> {formatDate(member.endDate)}</li>
                           <li><span className="text-gray-500">Auto-renew:</span> {member.autoRenew ? 'Yes' : 'No'}</li>
                           <li><span className="text-gray-500">Status:</span> {member.membershipStatus || '-'}</li>
                         </ul>
@@ -189,7 +224,7 @@ const AttendancePanel = ({ memberId, memberName, refreshKey = 0 }) => {
       const data = await listByMember(memberId);
       setLogs(data || []);
     } catch (e) {
-      toast.error('Failed to load attendance');
+      toast.error(extractErrorMessage(e, 'Failed to load attendance'));
     } finally {
       setLoading(false);
     }
@@ -204,7 +239,7 @@ const AttendancePanel = ({ memberId, memberName, refreshKey = 0 }) => {
 
   const openLog = useMemo(() => logs.find(l => !l.checkOutTime), [logs]);
 
-  const fmt = (dt) => dt ? new Date(dt).toLocaleString() : '-';
+  const fmt = (dt) => formatDateTime(dt);
   const fmtTime = (dt) => dt ? new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-';
   const since = () => {
     if (!openLog?.checkInTime) return '-';
@@ -221,7 +256,7 @@ const AttendancePanel = ({ memberId, memberName, refreshKey = 0 }) => {
       toast.success(`Checked out ${memberName}`);
       await loadLogs();
     } catch (e) {
-      toast.error('Failed to check-out');
+      toast.error(extractErrorMessage(e, 'Failed to check-out'));
     }
   };
 
@@ -244,19 +279,19 @@ Note: This will close the current session and calculate the final duration. Cont
   };
 
   return (
-    <div className="bg-white border rounded-md p-4">
+  <div className="bg-white border rounded-lg p-4">
       <div className="flex justify-between items-center">
         <h4 className="font-semibold text-gray-800">Attendance</h4>
         <div>
           <button
             onClick={() => { loadLogs(); toast.success('Attendance refreshed'); }}
             title="Refresh"
-            className="mr-2 px-2 py-1 text-xs border rounded hover:bg-gray-50 inline-flex items-center gap-1"
+            className="mr-2 px-2 py-1.5 text-xs border rounded-md hover:bg-gray-50 inline-flex items-center gap-1"
           >
             <FiRefreshCw /> Refresh
           </button>
           {openLog ? (
-            <button onClick={openCheckoutConfirm} className="px-3 py-1 text-xs bg-slate-700 text-white rounded hover:bg-slate-800">Check-out</button>
+            <button onClick={openCheckoutConfirm} className="px-3 py-1.5 text-xs bg-slate-700 text-white rounded-md hover:bg-slate-800">Check-out</button>
           ) : null}
         </div>
       </div>

@@ -66,8 +66,9 @@ public class MembershipPlanServiceImpl implements MembershipPlanService {
      */
     @Override
     public MembershipPlanResponse getPlanById(Long id) {
-        MembershipPlan plan = membershipPlanRepository.findById(id)
-                .orElseThrow(() -> new MembershipPlanNotFoundException(MembershipPlanConstants.MESSAGE_404));
+    MembershipPlan plan = membershipPlanRepository.findById(id)
+        .filter(p -> p.getStatus() == Status.ACTIVE)
+        .orElseThrow(() -> new MembershipPlanNotFoundException(MembershipPlanConstants.MESSAGE_404));
         return mapToResponse(plan);
     }
 
@@ -76,10 +77,11 @@ public class MembershipPlanServiceImpl implements MembershipPlanService {
      */
     @Override
     public List<MembershipPlanResponse> getAllPlans() {
-        return membershipPlanRepository.findAll()
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    return membershipPlanRepository.findAll()
+        .stream()
+        .filter(p -> p.getStatus() == Status.ACTIVE)
+        .map(this::mapToResponse)
+        .collect(Collectors.toList());
     }
 
     /**
@@ -87,9 +89,11 @@ public class MembershipPlanServiceImpl implements MembershipPlanService {
      */
     @Override
     public void deletePlan(Long id) {
-        MembershipPlan plan = membershipPlanRepository.findById(id)
-                .orElseThrow(() -> new MembershipPlanNotFoundException(MembershipPlanConstants.MESSAGE_404));
-        membershipPlanRepository.delete(plan);
+    MembershipPlan plan = membershipPlanRepository.findById(id)
+        .orElseThrow(() -> new MembershipPlanNotFoundException(MembershipPlanConstants.MESSAGE_404));
+    // Soft delete: mark INACTIVE instead of physical delete
+    plan.setStatus(Status.INACTIVE);
+    membershipPlanRepository.save(plan);
     }
 
     @Override

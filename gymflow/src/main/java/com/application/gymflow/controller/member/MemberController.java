@@ -16,6 +16,7 @@ import com.application.gymflow.service.MemberService;
 
 
 import com.application.gymflow.util.MemberMapper;
+import com.application.gymflow.exception.member.MemberNotFoundException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -68,6 +69,10 @@ public class MemberController {
     @GetMapping("/{id}")
     public ResponseEntity<MemberResponseDto> getMemberById(@PathVariable Long id) {
         Member member = memberService.getMemberById(id);
+        // Hide soft-deleted/inactive members from direct fetch by id
+        if (member.getStatus() != Status.ACTIVE) {
+            throw new MemberNotFoundException("Member not found with ID: " + id);
+        }
         return ResponseEntity.ok(memberMapper.toResponseDto(member));
     }
 
