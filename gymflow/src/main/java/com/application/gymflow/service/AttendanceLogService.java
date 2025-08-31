@@ -9,13 +9,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
 
 @Service
 public class AttendanceLogService {
 
     @Autowired
     private AttendanceLogRepository attendanceLogRepository;
+
+    @Autowired
+    private NotificationService notificationService;
 
     public AttendanceLog saveAttendanceLog(AttendanceLog attendanceLog) {
         // Get the current user's authentication details
@@ -39,6 +41,18 @@ public class AttendanceLogService {
             attendanceLog.setRecordedBy(RecordedByType.SYSTEM);
         }
 
-        return attendanceLogRepository.save(attendanceLog);
+        AttendanceLog saved = attendanceLogRepository.save(attendanceLog);
+
+        // Create a notification for real-time awareness
+        String memberName = saved.getMember() != null ? (saved.getMember().getFirstName() + " " + saved.getMember().getLastName()) : "Member";
+        String who = saved.getRecordedBy() != null ? saved.getRecordedBy().name() : "SYSTEM";
+        String title = "New check-in";
+        String message = memberName.trim() + " checked in at " + java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(saved.getCheckInTime()) + " (by " + who + ")";
+        // Notify OWNER only
+        try {
+            notificationService.createOwnerNotification(title, message);
+        } catch (Exception ignore) { /* non-critical */ }
+
+        return saved;
     }
 }

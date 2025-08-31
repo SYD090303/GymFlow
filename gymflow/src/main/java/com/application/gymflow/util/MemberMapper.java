@@ -4,16 +4,22 @@ import com.application.gymflow.dto.member.AttendanceLogResponseDto;
 import com.application.gymflow.dto.member.MemberResponseDto;
 
 import com.application.gymflow.dto.membership.MembershipPlanResponseDto;
-import com.application.gymflow.model.member.Member;
+import com.application.gymflow.enums.member.MembershipStatus;
 import com.application.gymflow.model.member.AttendanceLog;
 import com.application.gymflow.model.member.FitnessProfile;
+import com.application.gymflow.model.member.Member;
 import com.application.gymflow.model.member.Membership;
+import com.application.gymflow.model.member.Payment;
 import com.application.gymflow.model.membership.MembershipPlan;
-import com.application.gymflow.enums.member.MembershipStatus;
+import com.application.gymflow.repository.member.PaymentRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class MemberMapper {
+
+    private final PaymentRepository paymentRepository;
 
     public MemberResponseDto toResponseDto(Member member) {
         if (member == null) return null;
@@ -27,7 +33,7 @@ public class MemberMapper {
                 .profilePictureUrl(member.getProfilePictureUrl())
                 .status(member.getStatus());
 
-        Membership membership = member.getMembership();
+    Membership membership = member.getMembership();
         if (membership != null) {
             MembershipPlan plan = membership.getMembershipPlan();
             // Compute effective status from dates for robustness
@@ -60,9 +66,39 @@ public class MemberMapper {
                     .allergies(profile.getAllergies());
         }
 
-        // Financial info (example, you may need to calculate outstandingBalance, lastPaymentDate)
-        builder.outstandingBalance(null)
-                .lastPaymentDate(null);
+        // Financial info: compute last payment date and outstanding balance for current cycle
+        java.time.LocalDate lastPaymentDate = null;
+        Double outstandingBalance = null;
+
+        try {
+            // Last payment date (global for the member)
+            var latest = paymentRepository.findByMemberOrderByPaymentDateDesc(member);
+            if (latest != null && !latest.isEmpty()) {
+                lastPaymentDate = latest.getFirst().getPaymentDate();
+            }
+
+            // Outstanding balance for current membership cycle
+            if (membership != null && membership.getMembershipPlan() != null
+                    && membership.getStartDate() != null && membership.getEndDate() != null) {
+                Double planPrice = membership.getMembershipPlan().getPrice();
+                if (planPrice != null && planPrice > 0) {
+                    java.util.List<Payment> cyclePayments = paymentRepository
+                            .findByMemberAndPaymentDateBetween(member, membership.getStartDate(), membership.getEndDate());
+                    double paid = (cyclePayments == null) ? 0.0 : cyclePayments.stream()
+                            .mapToDouble(p -> p.getAmountPaid() == null ? 0.0 : p.getAmountPaid())
+                            .sum();
+                    double remaining = planPrice - paid;
+                    outstandingBalance = remaining > 0 ? remaining : 0.0;
+                } else {
+                    outstandingBalance = 0.0;
+                }
+            }
+        } catch (Exception ignored) {
+            // Fail-safe: leave financial fields null if any issue occurs
+        }
+
+        builder.outstandingBalance(outstandingBalance)
+                .lastPaymentDate(lastPaymentDate);
 
         return builder.build();
     }

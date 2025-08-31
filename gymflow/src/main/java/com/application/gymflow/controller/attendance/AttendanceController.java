@@ -11,6 +11,7 @@ import com.application.gymflow.repository.member.AttendanceLogRepository;
 import com.application.gymflow.service.MemberService;
 import com.application.gymflow.service.AttendanceLogService;
 import com.application.gymflow.util.MemberMapper;
+import com.application.gymflow.service.NotificationService;
 import com.application.gymflow.enums.common.Status;
 import com.application.gymflow.exception.member.MemberInactiveException;
 import com.application.gymflow.exception.member.AttendanceOperationException;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.springframework.security.core.Authentication;
 
 @Tag(
         name = "Attendance Management REST APIs",
@@ -39,15 +41,18 @@ public class AttendanceController {
         private final AttendanceLogRepository attendanceLogRepository;
                 private final MemberMapper memberMapper;
                 private final AttendanceLogService attendanceLogService;
+                private final NotificationService notificationService;
 
                 public AttendanceController(MemberService memberService,
                                                                         AttendanceLogRepository attendanceLogRepository,
                                                                         MemberMapper memberMapper,
-                                                                        AttendanceLogService attendanceLogService) {
+                                                                        AttendanceLogService attendanceLogService,
+                                                                        NotificationService notificationService) {
                 this.memberService = memberService;
                 this.attendanceLogRepository = attendanceLogRepository;
                 this.memberMapper = memberMapper;
                         this.attendanceLogService = attendanceLogService;
+                        this.notificationService = notificationService;
         }
 
         @Operation(summary = "Log Attendance for Member", description = "Creates a new attendance log (check-in) for the given member")
@@ -96,7 +101,8 @@ public class AttendanceController {
         @PostMapping("/member/{memberId}/check-out")
         public ResponseEntity<AttendanceLogResponseDto> checkOut(
                         @PathVariable Long memberId,
-                        @RequestBody(required = false) AttendanceCheckOutRequestDto body
+                        @RequestBody(required = false) AttendanceCheckOutRequestDto body,
+                        Authentication authentication
         ) {
                 Member member = memberService.getMemberById(memberId);
                 if (member.getStatus() != Status.ACTIVE) {
@@ -116,6 +122,17 @@ public class AttendanceController {
                 }
                 latest.setCheckOutTime(outTime);
                 latest = attendanceLogRepository.save(latest);
+
+                // Notify OWNER about checkout
+                try {
+                        String memberName = (member.getFirstName() == null ? "" : member.getFirstName()) + " " + (member.getLastName() == null ? "" : member.getLastName());
+                        boolean isOwner = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> "ROLE_OWNER".equals(a.getAuthority()));
+                        boolean isReceptionist = authentication != null && authentication.getAuthorities().stream().anyMatch(a -> "ROLE_RECEPTIONIST".equals(a.getAuthority()));
+                        String who = isOwner ? "OWNER" : (isReceptionist ? "RECEPTIONIST" : "SYSTEM");
+                        String title = "Check-out";
+                        String message = memberName.trim() + " checked out at " + java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").format(outTime) + " (by " + who + ")";
+                        notificationService.createOwnerNotification(title, message);
+                } catch (Exception ignore) { }
                 return ResponseEntity.ok(memberMapper.toAttendanceLogResponseDto(latest));
         }
 
@@ -132,6 +149,16 @@ public class AttendanceController {
                 .toList();
         return ResponseEntity.ok(response);
     }
+
+        @Operation(summary = "List Attendance for Current Member", description = "Fetch attendance logs for the authenticated member (self)")
+        @GetMapping("/me")
+        public ResponseEntity<List<AttendanceLogResponseDto>> getMyAttendance(Authentication authentication) {
+                String email = authentication.getName();
+                Member member = memberService.getMemberByEmail(email);
+                List<AttendanceLog> logs = attendanceLogRepository.findByMember(member);
+                List<AttendanceLogResponseDto> response = logs.stream().map(memberMapper::toAttendanceLogResponseDto).toList();
+                return ResponseEntity.ok(response);
+        }
 
     @Operation(summary = "List Attendance by Status", description = "Fetch all attendance logs filtered by attendance status")
     @GetMapping("/status/{status}")

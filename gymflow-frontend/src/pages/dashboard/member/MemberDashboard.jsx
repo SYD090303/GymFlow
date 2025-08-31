@@ -1,11 +1,11 @@
-import React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
-import { getMemberByEmail } from '../../../services/memberService';
+import { getMyMember } from '../../../services/memberService';
 import toast from 'react-hot-toast';
 import { extractErrorMessage } from '../../../utils/errors';
-import { listByMember } from '../../../services/attendanceService';
+import { listMyAttendance } from '../../../services/attendanceService';
 import { formatDate, formatTime } from '../../../utils/date';
+import Spinner from '../../../ui/Spinner';
 
 const Box = ({ title, children }) => (
   <div className="bg-white rounded-lg shadow p-4">
@@ -20,22 +20,19 @@ const MemberDashboard = () => {
   const [me, setMe] = useState(null);
   const [attendance, setAttendance] = useState([]);
   const [attLoading, setAttLoading] = useState(false);
-  const email = user?.sub || user?.username || user?.email; // JWT subject is email per backend
+  const email = user?.sub || user?.username || user?.email; // (kept for display/use if needed)
 
   useEffect(() => {
     const load = async () => {
-      if (!email) { setLoading(false); return; }
       try {
-        const data = await getMemberByEmail(email);
+        const data = await getMyMember();
         setMe(data);
-        if (data?.id) {
-          setAttLoading(true);
-          try {
-            const logs = await listByMember(data.id);
-            setAttendance(Array.isArray(logs) ? logs : []);
-          } finally {
-            setAttLoading(false);
-          }
+        setAttLoading(true);
+        try {
+          const logs = await listMyAttendance();
+          setAttendance(Array.isArray(logs) ? logs : []);
+        } finally {
+          setAttLoading(false);
         }
       } catch (e) {
         console.error('Failed to load member profile', e);
@@ -45,7 +42,7 @@ const MemberDashboard = () => {
       }
     };
     load();
-  }, [email]);
+  }, []);
 
   const last7DaysCount = useMemo(() => {
     const sevenDaysAgo = new Date();
@@ -72,7 +69,9 @@ const MemberDashboard = () => {
       <h1 className="text-2xl font-semibold">Member Dashboard</h1>
 
       {loading ? (
-        <div className="text-sm text-gray-600">Loading your profile…</div>
+        <div className="p-8 grid place-items-center">
+          <Spinner label="Loading your profile…" />
+        </div>
       ) : !me ? (
         <div className="text-sm text-gray-600">We couldn't find your member record.</div>
       ) : (
@@ -95,7 +94,9 @@ const MemberDashboard = () => {
           </Box>
           <Box title="Attendance">
             {attLoading ? (
-              <div className="text-sm text-gray-600">Loading attendance…</div>
+              <div className="p-6 grid place-items-center">
+                <Spinner label="Loading attendance…" />
+              </div>
             ) : attendance.length === 0 ? (
               <div className="text-sm text-gray-600">No attendance records yet.</div>
             ) : (

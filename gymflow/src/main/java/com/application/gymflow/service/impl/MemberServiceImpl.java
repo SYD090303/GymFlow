@@ -20,6 +20,7 @@ import com.application.gymflow.service.MemberService;
 import com.application.gymflow.service.auth.AuthService;
 
 import com.application.gymflow.service.AttendanceLogService;
+import com.application.gymflow.service.NotificationService;
 import com.application.gymflow.exception.member.MemberInactiveException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ public class MemberServiceImpl implements MemberService {
     private final FitnessProfileRepository fitnessProfileRepository;
     private final PaymentRepository paymentRepository;
     private final AttendanceLogService attendanceLogService;
+    private final NotificationService notificationService;
     private final AuthService authService;
     private final UserRepository userRepository;
 
@@ -103,7 +105,7 @@ public class MemberServiceImpl implements MemberService {
                 .build();
         memberRepository.save(member);
 
-        // 5. Create and save the Membership record.
+    // 5. Create and save the Membership record.
         LocalDate endDate = requestDto.getStartDate().plusMonths(membershipPlan.getDurationMonths());
         Membership membership = Membership.builder()
                 .member(member)
@@ -114,7 +116,9 @@ public class MemberServiceImpl implements MemberService {
                 .membershipStatus(MembershipStatus.ACTIVE)
                 .renewalDate(endDate)
                 .build();
-        membershipRepository.save(membership);
+    membershipRepository.save(membership);
+    // Keep inverse association in-memory for mapper/response
+    member.setMembership(membership);
 
         // 6. Create and save the FitnessProfile record.
         FitnessProfile fitnessProfile = FitnessProfile.builder()
@@ -125,18 +129,30 @@ public class MemberServiceImpl implements MemberService {
                 .injuries(requestDto.getInjuries())
                 .allergies(requestDto.getAllergies())
                 .build();
-        fitnessProfileRepository.save(fitnessProfile);
+    fitnessProfileRepository.save(fitnessProfile);
+    // Keep inverse association in-memory for mapper/response
+    member.setFitnessProfile(fitnessProfile);
 
         // 7. Create and save the initial Payment record.
-        Payment payment = Payment.builder()
-                .member(member)
-                .amountPaid(requestDto.getAmountPaid())
-                .paymentDate(LocalDate.now())
-                .paymentMethod(requestDto.getPaymentMethod())
-                .build();
-        paymentRepository.save(payment);
+    Payment payment = new Payment();
+    payment.setMember(member);
+    payment.setAmountPaid(requestDto.getAmountPaid());
+    payment.setPaymentDate(LocalDate.now());
+    payment.setPaymentMethod(requestDto.getPaymentMethod());
+    paymentRepository.save(payment);
 
-        return member;
+    // Persist updates to inverse links and return
+    Member savedMember = memberRepository.save(member);
+
+    // Notify owner of new member creation
+    try {
+        String fullName = (requestDto.getFirstName() == null ? "" : requestDto.getFirstName()) + " " + (requestDto.getLastName() == null ? "" : requestDto.getLastName());
+        String title = "New member added";
+        String msg = String.format("%s (%s) joined on %s", fullName.trim(), requestDto.getEmail(), java.time.LocalDate.now());
+        notificationService.createOwnerNotification(title, msg);
+    } catch (Exception ignore) { }
+
+    return savedMember;
     }
 
     /**
@@ -182,7 +198,9 @@ public class MemberServiceImpl implements MemberService {
     @Override
     @Transactional
     public Member updateMember(Long id, MemberUpdateRequestDto updateDto) {
-        Member existingMember = getMemberById(id);
+    Member existingMember = getMemberById(id);
+
+    String previousEmail = existingMember.getEmail();
 
         // Check for duplicate email
         if (updateDto.getEmail() != null && !existingMember.getEmail().equals(updateDto.getEmail())) {
@@ -192,8 +210,8 @@ public class MemberServiceImpl implements MemberService {
             }
         }
 
-        // Update core member fields
-        if (updateDto.getEmail() != null) existingMember.setEmail(updateDto.getEmail());
+    // Update core member fields
+    if (updateDto.getEmail() != null) existingMember.setEmail(updateDto.getEmail());
         if (updateDto.getFirstName() != null) existingMember.setFirstName(updateDto.getFirstName());
         if (updateDto.getLastName() != null) existingMember.setLastName(updateDto.getLastName());
         if (updateDto.getPhone() != null) existingMember.setPhone(updateDto.getPhone());
@@ -230,7 +248,18 @@ public class MemberServiceImpl implements MemberService {
             membershipRepository.save(membership);
         }
 
-        return memberRepository.save(existingMember);
+        // Persist member changes
+        Member saved = memberRepository.save(existingMember);
+
+        // Keep corresponding User in sync (email, firstName, lastName)
+        userRepository.findByEmail(previousEmail).ifPresent(user -> {
+            if (updateDto.getEmail() != null) user.setEmail(updateDto.getEmail());
+            if (updateDto.getFirstName() != null) user.setFirstName(updateDto.getFirstName());
+            if (updateDto.getLastName() != null) user.setLastName(updateDto.getLastName());
+            userRepository.save(user);
+        });
+
+        return saved;
     }
 
     /**
@@ -426,8 +455,25 @@ public class MemberServiceImpl implements MemberService {
      * @return A list of {@link Member} entities with outstanding payments.
      */
     public List<Member> getMembersWithOutstandingPayments() {
-        // Example: Members with no payments
-        return memberRepository.findByPaymentsIsEmpty();
+    // Members whose paid amount in the current membership cycle is less than plan price
+    return memberRepository.findAll().stream()
+        .filter(m -> m.getMembership() != null && m.getMembership().getMembershipPlan() != null)
+        .filter(m -> m.getStatus() == Status.ACTIVE)
+        .filter(m -> {
+            var ms = m.getMembership();
+            var plan = ms.getMembershipPlan();
+            double planPrice = plan.getPrice() != null ? plan.getPrice() : 0.0;
+            if (planPrice <= 0.0) return false;
+            LocalDate start = ms.getStartDate();
+            LocalDate end = ms.getEndDate();
+            double paid = m.getPayments() == null ? 0.0 : m.getPayments().stream()
+                .filter(p -> p.getPaymentDate() != null && start != null && end != null)
+                .filter(p -> !p.getPaymentDate().isBefore(start) && !p.getPaymentDate().isAfter(end))
+                .mapToDouble(Payment::getAmountPaid)
+                .sum();
+            return paid + 1e-6 < planPrice; // small epsilon
+        })
+        .toList();
     }
 
     /**

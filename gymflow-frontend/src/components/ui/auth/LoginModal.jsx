@@ -2,6 +2,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { variants } from "../../../ui/motionPresets";
 import { useLogin } from "../../../hooks/useLogin";
+import Spinner from "../../../ui/Spinner";
 
 const LoginModal = ({ isOpen, onClose }) => {
   const { loading, handleLogin } = useLogin(onClose);
@@ -60,6 +61,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     id="email"
                     type="email"
                     name="email"
+                    autoComplete="email"
                     required
                     placeholder="you@example.com"
                     className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
@@ -76,6 +78,7 @@ const LoginModal = ({ isOpen, onClose }) => {
                     id="password"
                     type="password"
                     name="password"
+                    autoComplete="current-password"
                     required
                     placeholder="••••••••"
                     className="mt-1 w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
@@ -89,27 +92,8 @@ const LoginModal = ({ isOpen, onClose }) => {
                 >
                   {loading ? (
                     <>
-                      <svg
-                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      <span>Signing In...</span>
+                      <Spinner size="sm" />
+                      <span>Signing in…</span>
                     </>
                   ) : (
                     "Sign In"

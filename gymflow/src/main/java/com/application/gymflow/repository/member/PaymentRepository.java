@@ -11,5 +11,6 @@ import java.util.List;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByMember(Member member);
+    List<Payment> findByMemberOrderByPaymentDateDesc(Member member);
     List<Payment> findByMemberAndPaymentDateBetween(Member member, LocalDate startDate, LocalDate endDate);
 }

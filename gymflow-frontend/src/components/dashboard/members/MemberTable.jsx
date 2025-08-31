@@ -12,6 +12,7 @@ import StatusChip from '../../common/StatusChip';
 import { formatDate, formatDateTime } from '../../../utils/date';
 import AvatarInitial from '../../common/AvatarInitial';
 import { titleCase } from '../../../utils/text';
+import Spinner from '../../../ui/Spinner';
 
 const MemberTable = ({ members, onEdit, onToggleStatus, onDelete, onRenew, onLogAttendance, attendanceRefreshKey }) => {
   const [expandedIds, setExpandedIds] = useState(new Set());
@@ -304,7 +305,7 @@ Note: This will close the current session and calculate the final duration. Cont
         confirmText="Confirm"
       />
       {loading ? (
-        <div className="text-sm text-gray-500 mt-2">Loading...</div>
+        <Spinner className="mt-2" />
       ) : (
         <div className="mt-3 space-y-2">
           {openLog && (

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { globalLoading } from './ui/globalLoading';
 
 const apiClient = axios.create();
 
@@ -16,9 +17,25 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    // signal global network activity
+    try { globalLoading.inc(); } catch (_) {}
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    try { globalLoading.dec(); } catch (_) {}
+    return Promise.reject(error);
+  }
+);
+
+apiClient.interceptors.response.use(
+  (response) => {
+    try { globalLoading.dec(); } catch (_) {}
+    return response;
+  },
+  (error) => {
+    try { globalLoading.dec(); } catch (_) {}
+    return Promise.reject(error);
+  }
 );
 
 export default apiClient;

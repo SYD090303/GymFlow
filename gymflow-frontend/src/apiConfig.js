@@ -15,6 +15,7 @@ export const MEMBER_ENDPOINTS = {
   LOG_ATTENDANCE: (memberId) => `${API_BASE_URL}/api/v1/members/${memberId}/attendance`,
   RENEW_MEMBERSHIP: (id) => `${API_BASE_URL}/api/v1/members/${id}/renew-membership`,
   GET_BY_EMAIL: `${API_BASE_URL}/api/v1/members/by-email`,
+  ME: `${API_BASE_URL}/api/v1/members/me`,
   GET_BY_STATUS: (status) => `${API_BASE_URL}/api/v1/members/status/${status}`,
   GET_BY_MEMBERSHIP_STATUS: (status) => `${API_BASE_URL}/api/v1/members/membership-status/${status}`,
   GET_ENDING_BEFORE: `${API_BASE_URL}/api/v1/members/membership/ending-before`,
@@ -46,6 +47,7 @@ export const RECEPTIONIST_ENDPOINTS = {
 export const ATTENDANCE_ENDPOINTS = {
   LOG: (memberId) => `${API_BASE_URL}/api/v1/attendance/member/${memberId}/log`,
   BY_MEMBER: (memberId) => `${API_BASE_URL}/api/v1/attendance/member/${memberId}`,
+  ME: `${API_BASE_URL}/api/v1/attendance/me`,
   BY_STATUS: (status) => `${API_BASE_URL}/api/v1/attendance/status/${status}`,
   RANGE: `${API_BASE_URL}/api/v1/attendance/range`,
   CHECK_IN: (memberId) => `${API_BASE_URL}/api/v1/attendance/member/${memberId}/check-in`,
@@ -56,4 +58,11 @@ export const ATTENDANCE_ENDPOINTS = {
 export const ACTUATOR_ENDPOINTS = {
     HEALTH: `${API_BASE_URL}/actuator/health`,
     INFO: `${API_BASE_URL}/actuator/info`,
+};
+
+export const NOTIFICATION_ENDPOINTS = {
+  OWNER_LIST: `${API_BASE_URL}/api/v1/notifications/owner`,
+  MY_LIST: `${API_BASE_URL}/api/v1/notifications/me`,
+  MARK_READ: (id) => `${API_BASE_URL}/api/v1/notifications/${id}/read`,
+  MARK_ALL_READ: `${API_BASE_URL}/api/v1/notifications/owner/read-all`,
 };

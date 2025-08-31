@@ -26,6 +26,11 @@ export const listByMember = async (memberId) => {
   return data;
 };
 
+export const listMyAttendance = async () => {
+  const { data } = await apiClient.get(ATTENDANCE_ENDPOINTS.ME);
+  return data;
+};
+
 export const listByStatus = async (status) => {
   const { data } = await apiClient.get(ATTENDANCE_ENDPOINTS.BY_STATUS(status));
   return data;

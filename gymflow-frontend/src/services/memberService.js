@@ -31,6 +31,16 @@ export const getMemberByEmail = async (email) => {
   }
 };
 
+export const getMyMember = async () => {
+  try {
+    const { data } = await apiClient.get(MEMBER_ENDPOINTS.ME);
+    return data;
+  } catch (error) {
+    console.error('Error fetching current member (/me)', error);
+    throw error;
+  }
+};
+
 export const createMember = async (memberData) => {
     try {
         const response = await apiClient.post(MEMBER_ENDPOINTS.CREATE, memberData);

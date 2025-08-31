@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { variants, list } from '../../../ui/motionPresets';
 import PageHeader from '../../../components/dashboard/PageHeader';
 import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
+import Spinner from '../../../ui/Spinner';
 
 const CheckIn = () => {
   const [query, setQuery] = useState('');
@@ -156,7 +157,9 @@ const CheckIn = () => {
           {showSuggestions && (
             <motion.div {...variants.fadeDown} className="absolute z-20 mt-2 w-full bg-white border rounded-lg shadow-lg max-h-80 overflow-auto">
               {loadingMembers ? (
-                <div className="p-3 text-sm text-gray-500">Loading…</div>
+                <div className="p-3 text-sm text-gray-500">
+                  <Spinner label="Loading members…" />
+                </div>
               ) : filtered.length === 0 ? (
                 <div className="p-3 text-sm text-gray-500">No matches</div>
               ) : (

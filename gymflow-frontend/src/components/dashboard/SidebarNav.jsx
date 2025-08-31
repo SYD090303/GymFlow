@@ -7,6 +7,7 @@ import {
   FiUserCheck,
   FiLayers,
   FiSettings,
+  FiBell,
 } from 'react-icons/fi';
 
 const adminNavs = [
@@ -15,6 +16,7 @@ const adminNavs = [
   { name: 'Check-in/Check-out', path: '/dashboard/check-in', icon: <FiLogIn /> },
   { name: 'Receptionists', path: '/dashboard/receptionists', icon: <FiUserCheck /> },
   { name: 'Membership Plans', path: '/dashboard/plans', icon: <FiLayers /> },
+  { name: 'Notifications', path: '/dashboard/notifications', icon: <FiBell /> },
   { name: 'Settings', path: '/dashboard/settings', icon: <FiSettings /> },
 ];
 
@@ -22,10 +24,12 @@ const receptionistNavs = [
   { name: 'Overview', path: '/dashboard/receptionist', icon: <FiHome /> },
   { name: 'Members', path: '/dashboard/members', icon: <FiUsers /> },
   { name: 'Check-in/Check-out', path: '/dashboard/check-in', icon: <FiLogIn /> },
+  { name: 'Settings', path: '/dashboard/settings', icon: <FiSettings /> },
 ];
 
 const memberNavs = [
   { name: 'My Dashboard', path: '/dashboard/member', icon: <FiHome /> },
+  { name: 'Settings', path: '/dashboard/settings', icon: <FiSettings /> },
 ];
 
 const NavItem = ({ item }) => (

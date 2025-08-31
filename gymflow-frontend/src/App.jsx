@@ -10,6 +10,7 @@ import CheckIn from './pages/dashboard/checkin/CheckIn';
 import ReceptionistsPage from './pages/dashboard/receptionists/ReceptionistsPage';
 import PlansPage from './pages/dashboard/plans/PlansPage';
 import SettingsPage from './pages/dashboard/settings/SettingsPage';
+import NotificationsPage from './pages/dashboard/notifications/NotificationsPage';
 import ReceptionistDashboard from './pages/dashboard/receptionist/ReceptionistDashboard';
 import MemberDashboard from './pages/dashboard/member/MemberDashboard';
 import './App.css';
@@ -30,6 +31,7 @@ function App() {
             <Route path="member" element={<MemberDashboard />} />
             <Route path="plans" element={<PlansPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="notifications" element={<NotificationsPage />} />
           </Route>
         </Route>
       </Routes>

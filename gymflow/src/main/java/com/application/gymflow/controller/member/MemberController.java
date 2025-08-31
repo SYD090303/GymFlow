@@ -27,6 +27,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+ 
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -180,6 +181,14 @@ public class MemberController {
     })
     @GetMapping("/by-email")
     public ResponseEntity<MemberResponseDto> getMemberByEmail(@RequestParam String email) {
+        Member member = memberService.getMemberByEmail(email);
+        return ResponseEntity.ok(memberMapper.toResponseDto(member));
+    }
+
+    @Operation(summary = "Fetch Current Member (Self)", description = "Fetch the authenticated member's details based on JWT email")
+    @GetMapping("/me")
+    public ResponseEntity<MemberResponseDto> getCurrentMember(org.springframework.security.core.Authentication authentication) {
+        String email = authentication.getName();
         Member member = memberService.getMemberByEmail(email);
         return ResponseEntity.ok(memberMapper.toResponseDto(member));
     }

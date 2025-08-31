@@ -12,6 +12,7 @@ import MetricCard from '../../../components/common/MetricCard';
 import ConfirmDialog from '../../../components/common/ConfirmDialog';
 import EmptyState from '../../../components/common/EmptyState';
 import SkeletonTable from '../../../components/common/SkeletonTable';
+import Spinner from '../../../ui/Spinner';
 
 const ReceptionistsPage = () => {
   const [list, setList] = useState([]);
@@ -127,7 +128,9 @@ const ReceptionistsPage = () => {
         {/* Mobile card list */}
         <div className="md:hidden divide-y">
           {loading ? (
-            <div className="p-4 text-sm text-gray-500">Loading…</div>
+            <div className="p-4 text-sm text-gray-500">
+              <Spinner label="Loading…" />
+            </div>
           ) : filtered.length === 0 ? (
             <div className="p-4">
               <EmptyState title="No receptionists found" description="Try changing filters or add a new receptionist." action={<button onClick={() => { setEditing(null); setIsOpen(true); }} className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-700 hover:to-violet-700"><FiUserPlus /> Add Receptionist</button>} />

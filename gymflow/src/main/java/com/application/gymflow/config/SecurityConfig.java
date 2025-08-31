@@ -63,17 +63,36 @@ public class SecurityConfig {
                                 "/swagger-ui.html"
                         ).permitAll()
 
-                        // Administrative endpoints (accessible only by ADMIN)
+                        // Administrative endpoints (accessible only by OWNER)
                         .requestMatchers("/api/v1/admins/**").hasRole("OWNER")
+                        .requestMatchers("/api/v1/jobs/**").hasRole("OWNER")
+
+                        // User settings endpoints
+                        .requestMatchers("/api/v1/users/me/**").authenticated()
+                        .requestMatchers("/api/v1/users/**").hasRole("OWNER")
 
                         // Receptionist management endpoints (accessible only by OWNER)
                         .requestMatchers("/api/v1/receptionists/**").hasRole("OWNER")
 
-                        // Member management + attendance endpoints (accessible by OWNER and RECEPTIONIST)
+                        // Member management + attendance endpoints
+                        // Self-scope for any authenticated user
+                        .requestMatchers("/api/v1/members/me").authenticated()
+                        .requestMatchers("/api/v1/attendance/me").authenticated()
+                        // Payments endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/member/*").hasAnyRole("OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/payments/member/*").hasAnyRole("OWNER", "RECEPTIONIST")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/payments/member/*/between").hasAnyRole("OWNER", "RECEPTIONIST")
+                        // Administrative member/attendance routes
                         .requestMatchers("/api/v1/members/**").hasAnyRole("OWNER", "RECEPTIONIST")
                         .requestMatchers("/api/v1/attendance/**").hasAnyRole("OWNER", "RECEPTIONIST")
 
-                        // Any other API endpoints must be authenticated
+                        // Notifications
+                        .requestMatchers("/api/v1/notifications/owner").hasRole("OWNER")
+                        .requestMatchers("/api/v1/notifications/me").hasRole("OWNER")
+                        .requestMatchers("/api/v1/notifications/**").hasRole("OWNER")
+
+                        // Any other API endpoints
                         .anyRequest().permitAll()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

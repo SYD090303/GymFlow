@@ -12,6 +12,7 @@ import { extractErrorMessage } from '../../../utils/errors';
 import MetricCard from '../../../components/common/MetricCard';
 import EmptyState from '../../../components/common/EmptyState';
 import SkeletonTable from '../../../components/common/SkeletonTable';
+import Spinner from '../../../ui/Spinner';
 
 const MembersPage = () => {
   const [members, setMembers] = useState([]);
@@ -204,12 +205,8 @@ const MembersPage = () => {
         </div>
       </div>
       {loading ? (
-        <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] table-fixed">
-              <SkeletonTable rows={7} cols={7} />
-            </table>
-          </div>
+        <div className="py-16 grid place-items-center">
+          <Spinner label="Loading members…" />
         </div>
       ) : filteredMembers.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-md border border-gray-100">

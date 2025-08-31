@@ -13,6 +13,7 @@ import { FaUsers, FaUserCheck, FaUserTie, FaUserClock } from 'react-icons/fa';
 import AvatarInitial from '../../../components/common/AvatarInitial';
 import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
 import { formatTime } from '../../../utils/date';
+import Spinner from '../../../ui/Spinner';
 
 const Card = ({ title, children }) => (
   <div className="bg-white rounded-xl shadow-md border border-gray-100"> 
@@ -230,7 +231,7 @@ const ReceptionistDashboard = () => {
         {/* Live now */}
         <Card title={`Live now (${openSessions.length})`}>
           {loading ? (
-            <div className="text-sm text-gray-500">Loading…</div>
+            <div className="py-8 grid place-items-center"><Spinner label="Loading…" /></div>
           ) : openSessions.length === 0 ? (
             <div className="text-sm text-gray-500">No one is currently checked in.</div>
           ) : (
@@ -260,7 +261,7 @@ const ReceptionistDashboard = () => {
         {/* Today's check-ins */}
         <Card title="Today’s check-ins">
           {loading ? (
-            <div className="text-sm text-gray-500">Loading…</div>
+            <div className="py-8 grid place-items-center"><Spinner label="Loading…" /></div>
           ) : todayLogs.length === 0 ? (
             <div className="text-sm text-gray-500">No check-ins recorded yet today.</div>
           ) : (
@@ -294,7 +295,7 @@ const ReceptionistDashboard = () => {
         {/* Ending soon */}
         <Card title="Ending soon (7 days)">
           {loading ? (
-            <div className="text-sm text-gray-500">Loading…</div>
+            <div className="py-8 grid place-items-center"><Spinner label="Loading…" /></div>
           ) : soonEnding.length === 0 ? (
             <div className="text-sm text-gray-500">No memberships ending soon.</div>
           ) : (

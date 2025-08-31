@@ -8,6 +8,7 @@ import { extractErrorMessage } from '../../../utils/errors';
 import PlanModal from '../../../components/dashboard/plans/PlanModal';
 import ConfirmationModal from '../../../components/dashboard/members/ConfirmationModal';
 import PageHeader from '../../../components/dashboard/PageHeader';
+import Spinner from '../../../ui/Spinner';
 
 const PlansPage = () => {
   const [plans, setPlans] = useState([]);
@@ -101,7 +102,9 @@ const PlansPage = () => {
       {/* Mobile card list */}
       <div className="md:hidden bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden divide-y">
         {loading ? (
-          <div className="p-4 text-sm text-gray-500">Loading plans…</div>
+          <div className="p-6 grid place-items-center">
+            <Spinner label="Loading plans…" />
+          </div>
         ) : filtered(plans, search).length === 0 ? (
           <div className="p-6 text-sm text-gray-500">No plans found. Try a different search.</div>
         ) : (

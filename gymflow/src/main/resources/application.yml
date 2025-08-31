@@ -85,3 +85,8 @@ app:
     allowed-methods: "${CORS_ALLOWED_METHODS:GET,POST,PUT,DELETE,OPTIONS,PATCH}"
     allowed-headers: "${CORS_ALLOWED_HEADERS:*}"
     allow-credentials: "${CORS_ALLOW_CREDENTIALS:true}"
+  jobs:
+    # Default daily at 00:10; override via env APP_JOBS_MEMBERSHIP_STATUS_CRON for testing, e.g. '*/30 * * * * *'
+    membership-status-cron: ${APP_JOBS_MEMBERSHIP_STATUS_CRON:0 10 0 * * *}
+    # Run membership status sync once on startup (useful if app was down at scheduled time)
+    run-on-startup: ${APP_JOBS_RUN_ON_STARTUP:true}
